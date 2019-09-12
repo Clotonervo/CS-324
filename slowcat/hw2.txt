@@ -1,0 +1,14 @@
+CS 324 - HW 2
+
+1. s2, a1, a2, a3, a4, d1
+
+2. s1 and e1, 
+	Simply using a == expression, it will return whether or not the two variables are pointing to the same thing. No it will not always work for comparing the string values, because although the actual contents may be the same, they could be stored in differenk locations.
+
+3. s1, s2, a1, a2, a3, a4, b1, b2, b3, b4, c1, c2, d1, d2, e1
+	A string is an array of characters that end in a null character. 
+
+4. All of them should work with memcpy() and memcmp()
+
+5. s1 and s2, s1 and a1, c1 and c2, s1 and d1, s1 and e1
+	s1 and b1 are not equivalent because b1 does not contain a null character at the end, while s1 contains inside the string the null character

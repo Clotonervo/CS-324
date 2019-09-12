@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 	}
     
 	/* Test size of arrays */
-	if (sizeof(s1) == sizeof(b1)) {
+	if (sizeof(c1) == sizeof(c2)) {
 		printf("Array sizes are the same!\n");
 	} else {
 		printf("Array sizes are NOT the same!\n");

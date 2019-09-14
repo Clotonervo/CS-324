@@ -1,0 +1,34 @@
+1. exec.c first sleeps for 30 seconds after printing out the pid. Then if there is a program to exec (as in if there is an argc > 1), then it will move on to the "running exec" print statement. If there is a program, then it will call execve() with the program and pass in the created newenviron char pointer. After that program is done running, it will call the last print statement.
+
+2. The last print statment will only be printed if there is a program to run and if said program finishes running and returns back to the exec program.
+
+3. Sams-Air-3:hw3 samhopkins$ ./exec /bin/cat
+Program "./exec" has pid 47780. Sleeping.
+Running exec of "/bin/cat"                            
+
+
+4. Sams-Air-3:~ samhopkins$ ps -p 47780 -o user,pid,ppid,state,comm 
+USER         PID  PPID STAT COMM
+samhopkins 47780 37012 S+   ./exec
+Sams-Air-3:~ samhopkins$ ps -p 47780 -o user,pid,ppid,state,comm 
+USER         PID  PPID STAT COMM
+samhopkins 47780 37012 S+   /bin/cat
+
+5. Both outputs had the same pid and the same parent ID. While they both also had similar states, the only reall thing that seemed to change was the executed program. Its interesting because it seems that the function that was called inside of exec really did execute the /bin/cat program on the same process.
+
+6. Sams-Air-3:hw3 samhopkins$ ./exec program-doesnt-exist
+Program "./exec" has pid 48622. Sleeping.
+Running exec of "program-doesnt-exist"
+End of program "./exec".
+
+Sams-Air-3:~ samhopkins$ ps -p 48622 -o user,pid,ppid,state,comm 
+USER         PID  PPID STAT COMM
+samhopkins 48622 37012 S+   ./exec
+Sams-Air-3:~ samhopkins$ ps -p 48622 -o user,pid,ppid,state,comm 
+USER   PID  PPID STAT COMM
+
+It seemed that as soon as the program ran and finished that the process terminated itself. Kind of like discussed in class, a fork would need to be called in order to continue the process, because after the executed program returned, process (in this case 48622) then terminated itself.
+
+7. From looking at fork.c, it seems to call a series of fork() functions with sleeps inside them. Then it has certain sections for the child and the parent to run through the program. For example, the child created before section A would hit the section A print statement, but then go through the section B conditional, while the parent will go through section C. Neither paths seem to even reach section D.
+
+8. Section A: is ran by both, Section B: is only by the child, Section C: is only by adult, and neither make it to Section D.

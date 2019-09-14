@@ -32,3 +32,44 @@ It seemed that as soon as the program ran and finished that the process terminat
 7. From looking at fork.c, it seems to call a series of fork() functions with sleeps inside them. Then it has certain sections for the child and the parent to run through the program. For example, the child created before section A would hit the section A print statement, but then go through the section B conditional, while the parent will go through section C. Neither paths seem to even reach section D.
 
 8. Section A: is ran by both, Section B: is only by the child, Section C: is only by adult, and neither make it to Section D.
+
+9. 
+
+h0pkins3@carolina:~/Desktop/CS-324/hw3$ ./fork                    
+Starting program; process has pid 24002                           
+Section A;  pid 24002                                             
+Section A;  pid 24003                                             
+Section C                                                         
+Section B                                                         
+Section B done sleeping                                           
+Section C done sleeping                                           
+
+
+│h0pkins3@carolina:~/Desktop/CS-324/hw3$ ps -p 24002,24003 --forest 	//First 30s sleep
+│ -o user,pid,ppid,state,comm
+│USER       PID  PPID S COMMAND
+│h0pkins3 24002 23741 S fork
+│h0pkins3 24003 24002 S  \_ fork
+│h0pkins3@carolina:~/Desktop/CS-324/hw3$ ps -p 24002,24003 --forest //After Section B done sleeping
+│ -o user,pid,ppid,state,comm 
+│USER       PID  PPID S COMMAND
+│h0pkins3 24002 23741 S fork
+│h0pkins3 24003 24002 Z  \_ fork <defunct>
+│h0pkins3@carolina:~/Desktop/CS-324/hw3$ 
+
+10. What was interesting is how the fork created the child and how they both went down different code paths. I also thought it was interesting how when you tried to show the different processes after Section B was done sleeping, the child process was no longer sleeping but was put in Zombie mode because it had hit an exit(0). This was the major difference between the two outputs, and its a result of the child hitting the end of its branch in the program before the parent, so it finished the program before the parent
+
+11. 
+
+
+
+
+
+
+
+
+
+
+
+
+

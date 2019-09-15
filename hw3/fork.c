@@ -26,7 +26,6 @@ int main(int argc, char *argv[]) {
 		sleep(30);
 		printf("Section B done sleeping\n");
         
-        kill(pid,SIGKILL);
 		exit(0);
 
 		/* END SECTION B */
@@ -35,6 +34,7 @@ int main(int argc, char *argv[]) {
 
 		printf("Section C\n");
 		sleep(30);
+        wait(0);
 		sleep(30);
 		printf("Section C done sleeping\n");
 

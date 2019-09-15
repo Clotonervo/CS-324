@@ -96,6 +96,37 @@ Section B done sleeping
 hello from Section B
 Section C done sleeping
 
+17. Sams-MacBook-Air-3:hw3 samhopkins$ echo foobar | ./fork /bin/cat
+Starting program; process has pid 22861
+Section A;  pid 22861
+Section C
+Section A;  pid 22862
+Section B
+Section B done sleeping
+Program "./fork" has pid 22862. Sleeping.
+Running exec of "/bin/cat"
+foobar
+Section C done sleeping
+
+18. Sams-MacBook-Air-3:hw3 samhopkins$ echo foobar | ./fork /bin/cat
+Starting program; process has pid 25335
+Section A;  pid 25335
+Section C
+Section A;  pid 25336
+Section B
+Section B done sleeping
+Program "./fork" has pid 25336. Sleeping.
+Running exec of "/bin/cat"
+Section C done sleeping
+
+Sams-MacBook-Air-3:hw3 samhopkins$ cat fork-output.txt 
+BEFORE FORK
+Section A
+Section C
+Section A
+Section B
+foobar
+
 
 
 

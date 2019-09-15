@@ -45,13 +45,11 @@ Section B done sleeping
 Section C done sleeping                                           
 
 
-│h0pkins3@carolina:~/Desktop/CS-324/hw3$ ps -p 24002,24003 --forest 	//First 30s sleep
-│ -o user,pid,ppid,state,comm
+│h0pkins3@carolina:~/Desktop/CS-324/hw3$ ps -p 24002,24003 --forest -o user,pid,ppid,state,comm //Before 30 sleep
 │USER       PID  PPID S COMMAND
 │h0pkins3 24002 23741 S fork
 │h0pkins3 24003 24002 S  \_ fork
-│h0pkins3@carolina:~/Desktop/CS-324/hw3$ ps -p 24002,24003 --forest //After Section B done sleeping
-│ -o user,pid,ppid,state,comm 
+│h0pkins3@carolina:~/Desktop/CS-324/hw3$ ps -p 24002,24003 --forest -o user,pid,ppid,state,comm //After Section B done sleeping
 │USER       PID  PPID S COMMAND
 │h0pkins3 24002 23741 S fork
 │h0pkins3 24003 24002 Z  \_ fork <defunct>
@@ -59,8 +57,44 @@ Section C done sleeping
 
 10. What was interesting is how the fork created the child and how they both went down different code paths. I also thought it was interesting how when you tried to show the different processes after Section B was done sleeping, the child process was no longer sleeping but was put in Zombie mode because it had hit an exit(0). This was the major difference between the two outputs, and its a result of the child hitting the end of its branch in the program before the parent, so it finished the program before the parent
 
-11. 
+11. You would want to put a wait(0) right inbetween the two sleep(30) in Section C. It would then wait for the child process to terminate and then the parent would reap it.
 
+12. h0pkins3@california:~/Desktop/CS-324/hw3$ ./fork                
+Starting program; process has pid 21047                             
+Section A;  pid 21047                                               
+Section A;  pid 21048                                             
+Section B                                                         
+Section C                                                          
+Section C done sleeping                                            
+h0pkins3@california:~/Desktop/CS-324/hw3$ Section B done sleeping 
+
+h0pkins3@california:~/Desktop/CS-324/hw3$ ps -p 21047,21048 --forest -o user,pid,ppid,state,comm
+│USER       PID  PPID S COMMAND
+│h0pkins3 21047 20865 S fork
+│h0pkins3 21048 21047 S  \_ fork
+│h0pkins3@california:~/Desktop/CS-324/hw3$ ps -p 21047,21048 --forest -o user,pid,ppid,state,comm
+│USER       PID  PPID S COMMAND
+│h0pkins3 21048     1 S fork
+
+13. The parent process exited first, which then terminated the program. The child process, however, continued its program and outputted that Section B was done sleeping after I had already exited the program. The reason being the parent process is the one we are interested in during the program, when it returns we return too. The child process simply does it's own thing, and its PPID then gets set to 1 instead of the old parent id. 
+
+14. h0pkins3@california:~/Desktop/CS-324/hw3$ cat fork-output.txt       
+Section A                                                                                
+Section C
+Section A                                                            
+Section B   
+
+15. The parent process continues on, seemingly running through the program before the child process does. It seems to complete its program before the child process is able to start its own branch. This behavior is apparent due to Section A and C being executed before the child process is able to print that it is in Section A and B.
+
+16. Sams-MacBook-Air-3:hw3 samhopkins$ ./fork
+Starting program; process has pid 22463
+Section A;  pid 22463
+Section C
+Section A;  pid 22464
+Section B
+Section B done sleeping
+hello from Section B
+Section C done sleeping
 
 
 

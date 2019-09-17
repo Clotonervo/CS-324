@@ -9,12 +9,12 @@ Running exec of "/bin/cat"
 
 4. Sams-Air-3:~ samhopkins$ ps -p 47780 -o user,pid,ppid,state,comm 
 USER         PID  PPID STAT COMM
-samhopkins 47780 37012 S+   ./exec
+samhopkins 47780 37012 S   exec
 Sams-Air-3:~ samhopkins$ ps -p 47780 -o user,pid,ppid,state,comm 
 USER         PID  PPID STAT COMM
-samhopkins 47780 37012 S+   /bin/cat
+samhopkins 47780 37012 S   cat
 
-5. Both outputs had the same pid and the same parent ID. While they both also had similar states, the only reall thing that seemed to change was the executed program. Its interesting because it seems that the function that was called inside of exec really did execute the /bin/cat program on the same process.
+5. Both outputs had the same pid and the same parent ID. While they both also had similar states, the only real thing that seemed to change was the executed program. Its interesting because it seems that the function that was called inside of exec really did execute the /bin/cat program on the same process.
 
 6. Sams-Air-3:hw3 samhopkins$ ./exec program-doesnt-exist
 Program "./exec" has pid 48622. Sleeping.
@@ -23,7 +23,7 @@ End of program "./exec".
 
 Sams-Air-3:~ samhopkins$ ps -p 48622 -o user,pid,ppid,state,comm 
 USER         PID  PPID STAT COMM
-samhopkins 48622 37012 S+   ./exec
+samhopkins 48622 37012 S   exec
 Sams-Air-3:~ samhopkins$ ps -p 48622 -o user,pid,ppid,state,comm 
 USER   PID  PPID STAT COMM
 

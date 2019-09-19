@@ -166,7 +166,6 @@ int main(int argc, char **argv)
 void eval(char *cmdline) 
 {
     if (strcmp(cmdline, "quit\n") == 0){
-        printf("Quit command inputted\n");
         exit(0);
     }
     else if (strstr(cmdline, "fg") != NULL){
@@ -177,6 +176,7 @@ void eval(char *cmdline)
     }
     else if (strcmp(cmdline, "jobs\n") == 0){
         printf("Jobs command inputted\n");
+        listjobs();
     }
     else {
         printf("Command not found\n");

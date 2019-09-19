@@ -165,6 +165,13 @@ int main(int argc, char **argv)
 */
 void eval(char *cmdline) 
 {
+	char *argv[MAXARGS];
+	int bg;
+	pid_t pid;
+
+
+	bg = parseline(cmdline, argv);
+
     if (strcmp(cmdline, "quit\n") == 0){
         exit(0);
     }

@@ -165,6 +165,22 @@ int main(int argc, char **argv)
 */
 void eval(char *cmdline) 
 {
+    if (strcmp(cmdline, "quit\n") == 0){
+        printf("Quit command inputted\n");
+        exit(0);
+    }
+    else if (strstr(cmdline, "fg") != NULL){
+        printf("Forground command inputted\n");
+    }
+    else if (strstr(cmdline, "bg") != NULL){
+        printf("Background command inputted\n");
+    }
+    else if (strcmp(cmdline, "jobs\n") == 0){
+        printf("Jobs command inputted\n");
+    }
+    else {
+        printf("Command not found\n");
+    }
     return;
 }
 

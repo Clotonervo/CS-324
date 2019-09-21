@@ -84,6 +84,7 @@ void unix_error(char *msg);
 void app_error(char *msg);
 typedef void handler_t(int);
 handler_t *Signal(int signum, handler_t *handler);
+pid_t Fork(void);
 
 /*
  * main - The shell's main routine 
@@ -176,7 +177,21 @@ void eval(char *cmdline)
     }
     
     if (builtin_cmd(argv) == 0){
+        pid = Fork();
         
+        if (pid == 0){
+            execve(argv[0], argv, environ);
+            exit(0);
+        }
+        
+        if (background){
+            addjob(jobs, pid, BG, cmdline);
+            
+        }
+        else {
+            addjob(jobs, pid, FG, cmdline);
+            waitfg(pid);
+        }
     }
 
     
@@ -587,5 +602,13 @@ void sigquit_handler(int sig)
     exit(1);
 }
 
-
-
+// FUNCTIONS I MAKE
+pid_t Fork(void)
+{
+    pid_t pid;
+    
+    if ((pid = fork()) < 0){
+        unix_error("Fork error");
+    }
+    return pid;
+}

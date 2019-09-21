@@ -171,23 +171,15 @@ void eval(char *cmdline)
 
 
 	bg = parseline(cmdline, argv);
+    if (argv[0] == NULL){
+        return;
+    }
+    
+    if (builtin_cmd(argv) == 0){
+        
+    }
 
-    if (strcmp(cmdline, "quit\n") == 0){
-        exit(0);
-    }
-    else if (strstr(cmdline, "fg") != NULL){
-        printf("Forground command inputted\n");
-    }
-    else if (strstr(cmdline, "bg") != NULL){
-        printf("Background command inputted\n");
-    }
-    else if (strcmp(cmdline, "jobs\n") == 0){
-        printf("Jobs command inputted\n");
-        listjobs();
-    }
-    else {
-        printf("Command not found\n");
-    }
+    
     return;
 }
 
@@ -254,7 +246,28 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
-    return 0;     /* not a builtin command */
+    if (strcmp(argv[0], "quit") == 0){
+        exit(0);
+    }
+    else if (strstr(argv[0], "fg") != NULL){
+        printf("Forground command inputted\n");
+        do_bgfg(argv);
+        return 1;
+    }
+    else if (strstr(argv[0], "bg") != NULL){
+        printf("Background command inputted\n");
+        do_bgfg(argv);
+        return 1;
+    }
+    else if (strcmp(argv[0], "jobs") == 0){
+        printf("Jobs command inputted\n");
+        listjobs(jobs);
+        return 1;
+    }
+    else {
+        return 0;     /* not a builtin command */
+    }
+    
 }
 
 /* 
@@ -262,6 +275,41 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
+    struct job_t *current_job = NULL;
+    
+    if (argv[1] == NULL){
+        //Do Something, possibly just return
+        printf("needs a job id or something else \n");
+        return;
+    }
+    else if (isdigit(argv[1][0])){
+        current_job = getjobpid(jobs, atoi(argv[1]));
+    }
+    else if ((strcmp(&argv[1][0], "%") ==0) && (isdigit(argv[1][1]))){
+        current_job = getjobjid(jobs, atoi(&argv[1][1]));
+    }
+    else {
+        printf("Invalid parameters\n");
+        return;
+    }
+    
+    if (current_job == NULL){
+        printf("Invalid JobID/Process ID \n");
+        return;
+    }
+    
+    if (strcmp(argv[0], "bg") == 0){
+        printf("Killing background process with pid of %d", current_job->pid);
+        kill(current_job->pid, SIGCONT);
+        return;
+    }
+    else if (strcmp(argv[0], "fg") == 0){
+        printf("Killing forground process with pid of %d", current_job->pid);
+        kill(current_job->pid, SIGCONT);
+        waitfg(current_job->pid);
+        return;
+    }
+    
     return;
 }
 

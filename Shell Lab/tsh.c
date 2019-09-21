@@ -247,7 +247,7 @@ int parseline(const char *cmdline, char **argv)
 int builtin_cmd(char **argv) 
 {
     if (strcmp(argv[0], "quit") == 0){
-        printf("%s quit\n", prompt);
+        printf("%squit\n", prompt);
         exit(0);
     }
     else if (strstr(argv[0], "fg") != NULL){

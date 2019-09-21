@@ -301,13 +301,13 @@ void do_bgfg(char **argv)
     
     if (strcmp(argv[0], "bg") == 0){
         printf("Killing background process with pid of %d", current_job->pid);
-        kill(current_job->pid, SIGCONT);
+        kill(-current_job->pid, SIGCONT);
         return;
     }
     else if (strcmp(argv[0], "fg") == 0){
         printf("Killing forground process with pid of %d", current_job->pid);
-        kill(current_job->pid, SIGCONT);
-        waitfg(current_job->pid);
+        kill(-current_job->pid, SIGCONT);
+        waitfg(-current_job->pid);
         return;
     }
     
@@ -319,6 +319,16 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
+    int still_running = 1;
+    while (still_running){
+        if (pid == fgpid(jobs)){
+            sleep(1);
+            continue;
+        }
+        else {
+            still_running = 0;
+        }
+    }
     return;
 }
 

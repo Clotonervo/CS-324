@@ -180,6 +180,7 @@ void eval(char *cmdline)
 
         if (pid == 0){
             execve(argv[0], argv, environ);
+            printf("End of Child Program");
             exit(0);
         }
         
@@ -193,7 +194,6 @@ void eval(char *cmdline)
         }
     }
 
-    
     return;
 }
 

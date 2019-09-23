@@ -180,7 +180,6 @@ void eval(char *cmdline)
 
         if (pid == 0){
             execve(argv[0], argv, environ);
-            printf("End of Child Program");
             exit(0);
         }
         
@@ -313,12 +312,12 @@ void do_bgfg(char **argv)
     }
     
     if (strcmp(argv[0], "bg") == 0){
-        printf("Killing background process with pid of %d", current_job->pid);
+        deletejob(jobs, -current_job->pid);
         kill(-current_job->pid, SIGCONT);
         return;
     }
     else if (strcmp(argv[0], "fg") == 0){
-        printf("Killing forground process with pid of %d", current_job->pid);
+        deletejob(jobs, -current_job->pid);
         kill(-current_job->pid, SIGCONT);
         waitfg(-current_job->pid);
         return;
@@ -336,7 +335,6 @@ void waitfg(pid_t pid)
     while (still_running){
         if (pid == fgpid(jobs)){
             sleep(1);
-            continue;
         }
         else {
             still_running = 0;
@@ -358,6 +356,13 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
+    pid_t fg_job_pid = fgpid(jobs);
+    deletejob(jobs, fg_job_pid);
+    
+    pid_t pid;
+    int status;
+    while((pid = waitpid(-1, &status, WNOHANG)) > 0);
+    
     return;
 }
 

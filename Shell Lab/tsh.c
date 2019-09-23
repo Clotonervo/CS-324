@@ -177,13 +177,9 @@ void eval(char *cmdline)
     }
     
     if (builtin_cmd(argv) == 0){
-        printf("Not a built in command\n");
         pid = Fork();
-        printf("After Fork\n");
 
-        
         if (pid == 0){
-            printf("Child executing with %s %s %s\n", argv[0], argv, environ);
             execve(argv[0], argv, environ);
             exit(0);
         }

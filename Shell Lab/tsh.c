@@ -361,7 +361,7 @@ void sigchld_handler(int sig)
     
     pid_t pid;
     int status;
-    while((pid = waitpid(-1, &status, WNOHANG)) > 0);
+    while((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0);
     
     return;
 }
@@ -373,6 +373,12 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
+    pid_t fg_job_pid = fgpid(jobs);
+    
+    if (pid !=0) {
+        kill(pid, sig);
+    }
+    
     return;
 }
 
@@ -383,6 +389,12 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+    pid_t fg_job_pid = fgpid(jobs);
+    
+    if (pid !=0) {
+        kill(pid, sig);
+    }
+    
     return;
 }
 

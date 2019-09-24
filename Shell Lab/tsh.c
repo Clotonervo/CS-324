@@ -371,11 +371,12 @@ void sigchld_handler(int sig)
     deletejob(jobs, fg_job_pid);
     
     int status;
-    while((fg_job_pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0);
+    while((fg_job_pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0){
     
-    if (WIFSTOPPED(status)) {
-        printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
-        getjobpid(jobs,fg_job_pid)->state = ST;
+        if (WIFSTOPPED(status)) {
+            printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
+            getjobpid(jobs,fg_job_pid)->state = ST;
+        }
     }
     
     return;

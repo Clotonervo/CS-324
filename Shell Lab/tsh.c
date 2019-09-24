@@ -178,13 +178,13 @@ void eval(char *cmdline)
     
     if (builtin_cmd(argv) == 0){
         sigfillset(&mask);
-        sigprockmask(SIG_BLOCK, &mask, &prev);
+        sigprocmask(SIG_BLOCK, &mask, &prev);
         
         pid = Fork();
 
         if (pid == 0){
             setpgid(0,0);
-            sigprockmask(SIG_UNBLOCK, &prev, NULL);
+            sigprocmask(SIG_UNBLOCK, &prev, NULL);
             
             execve(argv[0], argv, environ);
             exit(0);
@@ -192,7 +192,7 @@ void eval(char *cmdline)
         
         if (background){
             addjob(jobs, pid, BG, cmdline);
-            sigprockmask(SIG_UNBLOCK, &prev, NULL);
+            sigprocmask(SIG_UNBLOCK, &prev, NULL);
             
         }
         else {

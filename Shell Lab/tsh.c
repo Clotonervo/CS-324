@@ -194,6 +194,7 @@ void eval(char *cmdline)
             //printf("Run in background\n");
             addjob(jobs, pid, BG, cmdline);
             //sigprocmask(SIG_UNBLOCK, &prev, NULL);
+            printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
             
         }
         else {

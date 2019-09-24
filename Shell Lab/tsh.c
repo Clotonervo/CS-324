@@ -328,7 +328,7 @@ void do_bgfg(char **argv)
         printf("%s: No such job\n", argv[1]);
         return;
     }
-    else if (current_job == NULL && (argv[1] != '%')) {
+    else if (current_job == NULL && (argv[1][0] != '%')) {
         printf("(%s): No such process\n", argv[1]);
         return;
     }
@@ -380,18 +380,18 @@ void sigchld_handler(int sig)
     
     int status;
     while((fg_job_pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0){
-    
-        if (WIFSTOPPED(status)) {
-            //printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, WIFSTOPPED(status));
-            getjobpid(jobs,fg_job_pid)->state = ST;
+        if (WIFEXITED(status)){
+            deletejob(jobs, fg_job_pid);
         }
         else if (WIFSIGNALED(status)) {
-           // printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
+            printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, WTERMSIG(status));
             deletejob(jobs, fg_job_pid);
         }
-        else {
-            deletejob(jobs, fg_job_pid);
+        else if (WIFSTOPPED(status)) {
+            printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, WSTOPSIG(status));
+            getjobpid(jobs,fg_job_pid)->state = ST;
         }
+        
     }
     
     return;
@@ -407,7 +407,7 @@ void sigint_handler(int sig)  //PROBABLY DONE
     pid_t fg_job_pid = fgpid(jobs);
     
     if (fg_job_pid !=0) {
-        printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
+        //printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
         kill(-fg_job_pid, SIGINT);
     }
     
@@ -424,7 +424,7 @@ void sigtstp_handler(int sig)
     pid_t fg_job_pid = fgpid(jobs);
     
     if (fg_job_pid !=0) {
-        printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
+       // printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
         getjobpid(jobs,fg_job_pid)->state = ST;
         kill(-fg_job_pid, SIGSTOP);
     }

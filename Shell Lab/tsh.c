@@ -197,7 +197,7 @@ void eval(char *cmdline)
         }
         else {
             addjob(jobs, pid, FG, cmdline);
-            sigprockmask(SIG_UNBLOCK, &prev, NULL);
+            sigprocmask(SIG_UNBLOCK, &prev, NULL);
             waitfg(pid);
         }
     }

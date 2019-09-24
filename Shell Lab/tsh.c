@@ -328,7 +328,7 @@ void do_bgfg(char **argv)
         printf("%s: No such job\n", argv[1]);
         return;
     }
-    else {
+    else if (current_job == NULL && (argv[1] != '%')) {
         printf("(%s): No such process\n", argv[1]);
         return;
     }

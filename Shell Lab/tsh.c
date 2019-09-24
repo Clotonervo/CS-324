@@ -310,10 +310,11 @@ void do_bgfg(char **argv)
     else if (isdigit(argv[1][0])){
         current_job = getjobpid(jobs, atoi(argv[1]));
     }
-    else if ((strcmp(&argv[1][0], "%") ==0) && (isdigit(argv[1][1]))){
+    else if (((char)argv[1][0] == '%') && (isdigit(argv[1][1]))){
         current_job = getjobjid(jobs, atoi(&argv[1][1]));
     }
     else {
+        //printf("TEST = %c\n", argv[1][0]);
         printf("Invalid parameters\n");
         return;
     }
@@ -324,14 +325,17 @@ void do_bgfg(char **argv)
     }
     
     if (strcmp(argv[0], "bg") == 0){
-        deletejob(jobs, -current_job->pid);
+        //printf("Background command inputted\n");
+        
+        current_job->state = BG;
+        printf("[%d] (%d) %s", current_job->jid, current_job->pid, current_job->cmdline);
         kill(-current_job->pid, SIGCONT);
         return;
     }
     else if (strcmp(argv[0], "fg") == 0){
-        deletejob(jobs, -current_job->pid);
+        current_job->state = FG;
         kill(-current_job->pid, SIGCONT);
-        waitfg(-current_job->pid);
+        waitfg(current_job->pid);
         return;
     }
     
@@ -343,15 +347,10 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
-    int still_running = 1;
-    while (still_running){
-        if (pid == fgpid(jobs)){
-            sleep(1);
-        }
-        else {
-            still_running = 0;
-        }
+    while(pid == fgpid(jobs)){
+        sleep(1);
     }
+    
     return;
 }
 
@@ -375,7 +374,7 @@ void sigchld_handler(int sig)
     while((fg_job_pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0){
     
         if (WIFSTOPPED(status)) {
-            //printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
+            printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
             getjobpid(jobs,fg_job_pid)->state = ST;
         }
     }
@@ -394,6 +393,7 @@ void sigint_handler(int sig)
     
     if (fg_job_pid !=0) {
         printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
+        getjobpid(jobs, fg_job_pid)->state = ST;
         deletejob(jobs, fg_job_pid);
         kill(-fg_job_pid, SIGINT);
     }
@@ -411,7 +411,7 @@ void sigtstp_handler(int sig)
     pid_t fg_job_pid = fgpid(jobs);
     
     if (fg_job_pid !=0) {
-        printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
+       // printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
         getjobpid(jobs,fg_job_pid)->state = ST;
         kill(-fg_job_pid, SIGSTOP);
     }

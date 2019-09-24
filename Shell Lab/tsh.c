@@ -187,8 +187,13 @@ void eval(char *cmdline)
             setpgid(0,0);
             sigprocmask(SIG_SETMASK, &prev, NULL);
 
-            execve(argv[0], argv, environ);
-            exit(0);
+            if (execve(argv[0], argv, environ) < 0) {
+                printf("%s: Command not found\n", argv[0]);
+                exit(1);
+            }
+            else {
+                exit(0);
+            }
         }
         
         if (background){
@@ -304,7 +309,7 @@ void do_bgfg(char **argv)
     
     if (argv[1] == NULL){
         //Do Something, possibly just return
-        printf("needs a job id or something else \n");
+        printf("%s command requires PID or %%jobid argument\n", argv[0]);
         return;
     }
     else if (isdigit(argv[1][0])){
@@ -315,12 +320,16 @@ void do_bgfg(char **argv)
     }
     else {
         //printf("TEST = %c\n", argv[1][0]);
-        printf("Invalid parameters\n");
+        printf("%s: argument mus be a PID or %%jobid\n", argv[0]);
         return;
     }
     
-    if (current_job == NULL){
-        printf("Invalid JobID/Process ID \n");
+    if (current_job == NULL && (argv[1][0] == '%')){
+        printf("%s: No such job\n", argv[1]);
+        return;
+    }
+    else {
+        printf("(%s): No such process\n", argv[1]);
         return;
     }
     

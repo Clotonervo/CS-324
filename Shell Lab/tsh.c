@@ -177,14 +177,14 @@ void eval(char *cmdline)
     }
     
     if (builtin_cmd(argv) == 0){
-        sigfillset(&mask);
-        sigprocmask(SIG_BLOCK, &mask, &prev);
+       // sigfillset(&mask);
+       // sigprocmask(SIG_BLOCK, &mask, &prev);
         
         pid = Fork();
 
         if (pid == 0){
-            setpgid(0,0);
-            sigprocmask(SIG_UNBLOCK, &prev, NULL);
+          //  setpgid(0,0);
+           // sigprocmask(SIG_UNBLOCK, &prev, NULL);
             
             execve(argv[0], argv, environ);
             exit(0);
@@ -192,12 +192,12 @@ void eval(char *cmdline)
         
         if (background){
             addjob(jobs, pid, BG, cmdline);
-            sigprocmask(SIG_UNBLOCK, &prev, NULL);
+            //sigprocmask(SIG_UNBLOCK, &prev, NULL);
             
         }
         else {
             addjob(jobs, pid, FG, cmdline);
-            sigprocmask(SIG_UNBLOCK, &prev, NULL);
+           // sigprocmask(SIG_UNBLOCK, &prev, NULL);
             waitfg(pid);
         }
     }
@@ -344,6 +344,7 @@ void waitfg(pid_t pid)
     while (still_running){
         if (pid == fgpid(jobs)){
             sleep(1);
+            printf("Waiting for forground\n");
         }
         else {
             still_running = 0;
@@ -369,7 +370,7 @@ void sigchld_handler(int sig)
     deletejob(jobs, fg_job_pid);
     
     int status;
-    while((fg_job_pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0);
+    while((fg_job_pid = waitpid(-1, &status, WNOHANG)) > 0);
     
     return;
 }

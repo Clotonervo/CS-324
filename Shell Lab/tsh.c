@@ -386,6 +386,8 @@ void sigint_handler(int sig)
     pid_t fg_job_pid = fgpid(jobs);
     
     if (fg_job_pid !=0) {
+        printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
+        deletejob(jobs, fg_job_pid);
         kill(-fg_job_pid, sig);
     }
     

@@ -169,7 +169,7 @@ void eval(char *cmdline)
 	char *argv[MAXARGS];
 	int background;
 	pid_t pid;
-    sigset_t mask, prev;
+    sigset_t mask;
 
 	background = parseline(cmdline, argv);
     if (argv[0] == NULL){
@@ -178,13 +178,13 @@ void eval(char *cmdline)
     
     if (builtin_cmd(argv) == 0){
         sigfillset(&mask);
-        sigprocmask(SIG_BLOCK, &mask, &prev);
+        sigprocmask(SIG_BLOCK, &mask, NULL);
         
         pid = Fork();
 
         if (pid == 0){
             setpgid(0,0);
-            sigprocmask(SIG_UNBLOCK, &prev, NULL);
+            sigprocmask(SIG_UNBLOCK, &mask, NULL);
             
             execve(argv[0], argv, environ);
             exit(0);
@@ -193,13 +193,13 @@ void eval(char *cmdline)
         if (background){
             //printf("Run in background\n");
             addjob(jobs, pid, BG, cmdline);
-            sigprocmask(SIG_UNBLOCK, &prev, NULL);
+            sigprocmask(SIG_UNBLOCK, &mask, NULL);
             printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
             
         }
         else {
             addjob(jobs, pid, FG, cmdline);
-            sigprocmask(SIG_UNBLOCK, &prev, NULL);
+            sigprocmask(SIG_UNBLOCK, &mask, NULL);
             waitfg(pid);
         }
     }
@@ -394,7 +394,7 @@ void sigint_handler(int sig)
     if (fg_job_pid !=0) {
         printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
         deletejob(jobs, fg_job_pid);
-        kill(-fg_job_pid, sig);
+        kill(-fg_job_pid, SIGINT);
     }
     
     return;
@@ -412,7 +412,7 @@ void sigtstp_handler(int sig)
     if (fg_job_pid !=0) {
         printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
         getjobpid(jobs,fg_job_pid)->state = ST;
-        kill(-fg_job_pid, sig);
+        kill(-fg_job_pid, SIGSTOP);
     }
     
     return;

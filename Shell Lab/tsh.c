@@ -382,12 +382,10 @@ void sigchld_handler(int sig)
     while((fg_job_pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0){
        
         if (WIFSIGNALED(status)) {
-            printf("in child hanler terminate part\n");
             printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, WTERMSIG(status));
             deletejob(jobs, fg_job_pid);
         }
         else if (WIFSTOPPED(status)) {
-            printf("in child hanler stopped part\n");
             printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, WSTOPSIG(status));
             getjobpid(jobs,fg_job_pid)->state = ST;
         }
@@ -411,7 +409,7 @@ void sigint_handler(int sig)  //PROBABLY DONE
     
     if (fg_job_pid !=0) {
         //printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
-        kill(-fg_job_pid, SIGINT);
+        kill(-fg_job_pid, sig);
     }
     
     return;
@@ -429,7 +427,7 @@ void sigtstp_handler(int sig)
     if (fg_job_pid !=0) {
         //printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
         getjobpid(jobs,fg_job_pid)->state = ST;
-        kill(-fg_job_pid, SIGSTOP);
+        kill(-fg_job_pid, sig);
     }
     
     return;

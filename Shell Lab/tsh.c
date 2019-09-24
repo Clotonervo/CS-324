@@ -274,17 +274,17 @@ int builtin_cmd(char **argv)
         exit(0);
     }
     else if (strstr(argv[0], "fg") != NULL){
-        printf("Forground command inputted\n");
+        //printf("Forground command inputted\n");
         do_bgfg(argv);
         return 1;
     }
     else if (strstr(argv[0], "bg") != NULL){
-        printf("Background command inputted\n");
+        //printf("Background command inputted\n");
         do_bgfg(argv);
         return 1;
     }
     else if (strcmp(argv[0], "jobs") == 0){
-        printf("Jobs command inputted\n");
+        //printf("Jobs command inputted\n");
         listjobs(jobs);
         return 1;
     }

@@ -169,6 +169,7 @@ void eval(char *cmdline)
 	char *argv[MAXARGS];
 	int background;
 	pid_t pid;
+    sigset_t mask, prev;
 
 	background = parseline(cmdline, argv);
     if (argv[0] == NULL){
@@ -176,19 +177,27 @@ void eval(char *cmdline)
     }
     
     if (builtin_cmd(argv) == 0){
+        sigfillset(&mask);
+        sigprockmask(SIG_BLOCK, &mask, &prev);
+        
         pid = Fork();
 
         if (pid == 0){
+            setpgid(0,0);
+            sigprockmask(SIG_UNBLOCK, &prev, NULL);
+            
             execve(argv[0], argv, environ);
             exit(0);
         }
         
         if (background){
             addjob(jobs, pid, BG, cmdline);
+            sigprockmask(SIG_UNBLOCK, &prev, NULL);
             
         }
         else {
             addjob(jobs, pid, FG, cmdline);
+            sigprockmask(SIG_UNBLOCK, &prev, NULL);
             waitfg(pid);
         }
     }
@@ -359,9 +368,8 @@ void sigchld_handler(int sig)
     pid_t fg_job_pid = fgpid(jobs);
     deletejob(jobs, fg_job_pid);
     
-    pid_t pid;
     int status;
-    while((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0);
+    while((fg_job_pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0);
     
     return;
 }
@@ -375,8 +383,8 @@ void sigint_handler(int sig)
 {
     pid_t fg_job_pid = fgpid(jobs);
     
-    if (pid !=0) {
-        kill(pid, sig);
+    if (fg_job_pid !=0) {
+        kill(-fg_job_pid, sig);
     }
     
     return;
@@ -391,8 +399,8 @@ void sigtstp_handler(int sig)
 {
     pid_t fg_job_pid = fgpid(jobs);
     
-    if (pid !=0) {
-        kill(pid, sig);
+    if (fg_job_pid !=0) {
+        kill(-fg_job_pid, sig);
     }
     
     return;

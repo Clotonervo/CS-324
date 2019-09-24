@@ -191,6 +191,7 @@ void eval(char *cmdline)
         }
         
         if (background){
+            printf("Run in background\n");
             addjob(jobs, pid, BG, cmdline);
             //sigprocmask(SIG_UNBLOCK, &prev, NULL);
             
@@ -344,7 +345,6 @@ void waitfg(pid_t pid)
     while (still_running){
         if (pid == fgpid(jobs)){
             sleep(1);
-            printf("Waiting for forground\n");
         }
         else {
             still_running = 0;

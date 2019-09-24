@@ -329,12 +329,12 @@ void do_bgfg(char **argv)
         
         current_job->state = BG;
         printf("[%d] (%d) %s", current_job->jid, current_job->pid, current_job->cmdline);
-        kill(-current_job->pid, SIGCONT);
+       // kill(-current_job->pid, SIGCONT);
         return;
     }
     else if (strcmp(argv[0], "fg") == 0){
         current_job->state = FG;
-        kill(-current_job->pid, SIGCONT);
+        //kill(-current_job->pid, SIGCONT);
         waitfg(current_job->pid);
         return;
     }
@@ -368,14 +368,20 @@ void waitfg(pid_t pid)
 void sigchld_handler(int sig) 
 {
     pid_t fg_job_pid = fgpid(jobs);
-    deletejob(jobs, fg_job_pid);
     
     int status;
     while((fg_job_pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0){
     
         if (WIFSTOPPED(status)) {
-            printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
+            printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, WIFSTOPPED(status));
             getjobpid(jobs,fg_job_pid)->state = ST;
+        }
+        else if (WIFSIGNALED(status)) {
+            printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, WIFSIGNALED(status));
+            deletejob(jobs, fg_job_pid);
+        }
+        else {
+            deletejob(jobs, fg_job_pid);
         }
     }
     
@@ -392,9 +398,7 @@ void sigint_handler(int sig)
     pid_t fg_job_pid = fgpid(jobs);
     
     if (fg_job_pid !=0) {
-        printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
-        getjobpid(jobs, fg_job_pid)->state = ST;
-        deletejob(jobs, fg_job_pid);
+        //printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
         kill(-fg_job_pid, SIGINT);
     }
     

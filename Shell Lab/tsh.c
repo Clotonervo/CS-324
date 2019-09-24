@@ -329,12 +329,12 @@ void do_bgfg(char **argv)
         
         current_job->state = BG;
         printf("[%d] (%d) %s", current_job->jid, current_job->pid, current_job->cmdline);
-       // kill(-current_job->pid, SIGCONT);
+        kill(-current_job->pid, SIGCONT);
         return;
     }
     else if (strcmp(argv[0], "fg") == 0){
         current_job->state = FG;
-        //kill(-current_job->pid, SIGCONT);
+        kill(-current_job->pid, SIGCONT);
         waitfg(current_job->pid);
         return;
     }

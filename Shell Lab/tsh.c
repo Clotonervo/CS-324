@@ -373,11 +373,11 @@ void sigchld_handler(int sig)
     while((fg_job_pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0){
     
         if (WIFSTOPPED(status)) {
-            printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, WIFSTOPPED(status));
+            printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
             getjobpid(jobs,fg_job_pid)->state = ST;
         }
         else if (WIFSIGNALED(status)) {
-            printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, WIFSIGNALED(status));
+           // printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
             deletejob(jobs, fg_job_pid);
         }
         else {
@@ -393,12 +393,12 @@ void sigchld_handler(int sig)
  *    user types ctrl-c at the keyboard.  Catch it and send it along
  *    to the foreground job.  
  */
-void sigint_handler(int sig) 
+void sigint_handler(int sig)  //PROBABLY DONE
 {
     pid_t fg_job_pid = fgpid(jobs);
     
     if (fg_job_pid !=0) {
-        //printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
+        printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
         kill(-fg_job_pid, SIGINT);
     }
     

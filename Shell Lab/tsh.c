@@ -177,14 +177,14 @@ void eval(char *cmdline)
     }
     
     if (builtin_cmd(argv) == 0){
-       // sigfillset(&mask);
-       // sigprocmask(SIG_BLOCK, &mask, &prev);
+        sigfillset(&mask);
+        sigprocmask(SIG_BLOCK, &mask, &prev);
         
         pid = Fork();
 
         if (pid == 0){
-          //  setpgid(0,0);
-           // sigprocmask(SIG_UNBLOCK, &prev, NULL);
+            setpgid(0,0);
+            sigprocmask(SIG_UNBLOCK, &prev, NULL);
             
             execve(argv[0], argv, environ);
             exit(0);
@@ -193,13 +193,13 @@ void eval(char *cmdline)
         if (background){
             //printf("Run in background\n");
             addjob(jobs, pid, BG, cmdline);
-            //sigprocmask(SIG_UNBLOCK, &prev, NULL);
+            sigprocmask(SIG_UNBLOCK, &prev, NULL);
             printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
             
         }
         else {
             addjob(jobs, pid, FG, cmdline);
-           // sigprocmask(SIG_UNBLOCK, &prev, NULL);
+            sigprocmask(SIG_UNBLOCK, &prev, NULL);
             waitfg(pid);
         }
     }
@@ -371,7 +371,7 @@ void sigchld_handler(int sig)
     deletejob(jobs, fg_job_pid);
     
     int status;
-    while((fg_job_pid = waitpid(-1, &status, WNOHANG)) > 0);
+    while((fg_job_pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0);
     
     return;
 }

@@ -377,6 +377,9 @@ void waitfg(pid_t pid)
 void sigchld_handler(int sig) 
 {
     pid_t fg_job_pid = fgpid(jobs);
+    int mask, prev;
+    sigfillset(&mask);
+    sigprocmask(SIG_BLOCK, &mask, &prev);
     
     int status;
     while((fg_job_pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0){
@@ -392,9 +395,9 @@ void sigchld_handler(int sig)
         else if (WIFEXITED(status)){
             deletejob(jobs, fg_job_pid);
         }
-        
     }
     
+    sigprocmask(SIG_SETMASK, &prev, NULL);
     return;
 }
 
@@ -406,12 +409,16 @@ void sigchld_handler(int sig)
 void sigint_handler(int sig)  //PROBABLY DONE
 {
     pid_t fg_job_pid = fgpid(jobs);
+    int mask, prev;
+    sigfillset(&mask);
+    sigprocmask(SIG_BLOCK, &mask, &prev);
     
     if (fg_job_pid !=0) {
         //printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
         kill(-fg_job_pid, sig);
     }
     
+    sigprocmask(SIG_SETMASK, &prev, NULL);
     return;
 }
 
@@ -423,6 +430,9 @@ void sigint_handler(int sig)  //PROBABLY DONE
 void sigtstp_handler(int sig) 
 {
     pid_t fg_job_pid = fgpid(jobs);
+    int mask, prev;
+    sigfillset(&mask);
+    sigprocmask(SIG_BLOCK, &mask, &prev);
     
     if (fg_job_pid !=0) {
         //printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
@@ -430,6 +440,7 @@ void sigtstp_handler(int sig)
         kill(-fg_job_pid, sig);
     }
     
+    sigprocmask(SIG_SETMASK, &prev, NULL);
     return;
 }
 

@@ -377,7 +377,7 @@ void waitfg(pid_t pid)
 void sigchld_handler(int sig) 
 {
     pid_t fg_job_pid = fgpid(jobs);
-    int mask, prev;
+    sigset_t mask, prev;
     sigfillset(&mask);
     sigprocmask(SIG_BLOCK, &mask, &prev);
     
@@ -409,7 +409,7 @@ void sigchld_handler(int sig)
 void sigint_handler(int sig)  //PROBABLY DONE
 {
     pid_t fg_job_pid = fgpid(jobs);
-    int mask, prev;
+    sigset_t mask, prev;
     sigfillset(&mask);
     sigprocmask(SIG_BLOCK, &mask, &prev);
     
@@ -430,7 +430,7 @@ void sigint_handler(int sig)  //PROBABLY DONE
 void sigtstp_handler(int sig) 
 {
     pid_t fg_job_pid = fgpid(jobs);
-    int mask, prev;
+    sigset_t mask, prev;
     sigfillset(&mask);
     sigprocmask(SIG_BLOCK, &mask, &prev);
     

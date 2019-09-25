@@ -197,7 +197,6 @@ void eval(char *cmdline)
         }
         
         if (background){
-            //printf("Run in background\n");
             addjob(jobs, pid, BG, cmdline);
             sigprocmask(SIG_SETMASK, &prev, NULL);
             printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
@@ -280,17 +279,14 @@ int builtin_cmd(char **argv)
         exit(0);
     }
     else if (strstr(argv[0], "fg") != NULL){
-        //printf("Forground command inputted\n");
         do_bgfg(argv);
         return 1;
     }
     else if (strstr(argv[0], "bg") != NULL){
-        //printf("Background command inputted\n");
         do_bgfg(argv);
         return 1;
     }
     else if (strcmp(argv[0], "jobs") == 0){
-        //printf("Jobs command inputted\n");
         listjobs(jobs);
         return 1;
     }
@@ -308,7 +304,6 @@ void do_bgfg(char **argv)
     struct job_t *current_job = NULL;
     
     if (argv[1] == NULL){
-        //Do Something, possibly just return
         printf("%s command requires PID or %%jobid argument\n", argv[0]);
         return;
     }
@@ -319,7 +314,6 @@ void do_bgfg(char **argv)
         current_job = getjobjid(jobs, atoi(&argv[1][1]));
     }
     else {
-        //printf("TEST = %c\n", argv[1][0]);
         printf("%s: argument must be a PID or %%jobid\n", argv[0]);
         return;
     }
@@ -334,8 +328,6 @@ void do_bgfg(char **argv)
     }
     
     if (strcmp(argv[0], "bg") == 0){
-        //printf("Background command inputted\n");
-        
         current_job->state = BG;
         printf("[%d] (%d) %s", current_job->jid, current_job->pid, current_job->cmdline);
         kill(-current_job->pid, SIGCONT);
@@ -414,7 +406,6 @@ void sigint_handler(int sig)  //PROBABLY DONE
     sigprocmask(SIG_BLOCK, &mask, &prev);
     
     if (fg_job_pid !=0) {
-        //printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
         kill(-fg_job_pid, sig);
     }
     
@@ -435,8 +426,6 @@ void sigtstp_handler(int sig)
     sigprocmask(SIG_BLOCK, &mask, &prev);
     
     if (fg_job_pid !=0) {
-        //printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(fg_job_pid), fg_job_pid, sig);
-        //getjobpid(jobs,fg_job_pid)->state = ST;
         kill(-fg_job_pid, sig);
     }
     

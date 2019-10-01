@@ -1,0 +1,26 @@
+Strings Assignment
+
+The purpose of this assignment is to help you understand common errors CS 324 students face relating to strings in C. Understanding this assignment will make you better prepared for future lab assignments in this class.
+
+strings.c is a program that implements 6 simple string-related functions. However, all of these functions are currently bugged and don't work. Some of them produce the wrong output; others will segfault when you try to run them. Your assignment is to explain and correct these errors.
+
+Instructions:
+
+Download and extract the provided tar file. Run "make" to compile the program. (Because there are bugs in the program, several warnings will pop up.)
+
+This program allows you to test the 6 functions by running ./strings <num>, where num is a number 1-6 that corresponds to the function you want to test. Once you are able to successfully compile and run the program, open strings.c and look at the 6 functions.
+
+For each of the 6 provided functions (isHelloWorld, fillHelloWorld, copyString, copyArray, getSubstring, getFirstWord):
+
+1. Carefully read the function description and provided implementation.
+2. Run ./strings <num> with the function number to see the function's current and expected output.
+3. Explain why the provided implementation does not work. (Put your explanations into a file called writeup.txt.)
+4. Explain what needs to be changed about the implementation to make the function work correctly.
+5. Fix the provided implementation so that the function works as described. Verify your solution by running ./strings <num> with the function number.
+
+You are not allowed to change any other part of the program except for one line in main() that is labeled in Test 4 of strings.c.
+
+When you are finished, submit a tar file containing:
+(1) strings.c with your corrected implementations for each of the 6 functions
+(2) the writeup.txt file containing your explanations for why each function did not work as provided and what you did to fix the issue. 
+Submit this tar file on Learning Suite.

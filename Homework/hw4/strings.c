@@ -46,7 +46,7 @@ char* copyArray(char* array, int arraySize) {
 //EXAMPLE: On input str='Hello World!', begin=3, length=7, the function should return the string 'lo Worl'
 char* getSubstring(char* str, unsigned int begin, unsigned int length) {
     char* substr = malloc(length+1);
-    memcpy(substr, str[begin], length);
+    memcpy(substr, &str[begin], length);
     substr[length] = 0; //Null terminator
     return substr;
 }

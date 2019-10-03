@@ -8,4 +8,4 @@
 
 5. The reason case 5 didn't work was because in the memcpy() function, we needed to treat the start of the substring (str[begin]) as a pointer for memcpy() to start at, rather than just the char*. We needed to dereference the pointer so it was copying the memory at the address rather than the actual address.
 
-6. 
+6. strtok() alters the original string by placing a null terminal character at the delimiter. In order to keep the same functionalitiy we need to copy the string over to a temporary string, and use that string to call strtok() and convert it into its token/substring.

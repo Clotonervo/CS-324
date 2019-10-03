@@ -54,7 +54,9 @@ char* getSubstring(char* str, unsigned int begin, unsigned int length) {
 //#6: Return the first word of str (space delimited) without modifying str
 //You may assume that str is null-terminated and is not empty
 char* getFirstWord(char* str) {
-    char* word = strtok(str, " ");
+    char* temp;
+    strcpy(temp, str);
+    char* word = strtok(temp, " ");
     return word;
 }
 

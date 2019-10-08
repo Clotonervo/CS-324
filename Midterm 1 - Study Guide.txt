@@ -1,0 +1,41 @@
+Environment
+  - setting environment for program execution
+  - retrieving environment (e.g., from within C)
+File descriptors
+  - stdin, stdout, stderr
+  - redirection / duplication within a program
+  - pipe concepts
+  - dup2() concepts
+Shell usage
+  - file descriptor redirection / duplication
+  - shell pipelines
+  - jobs / job control
+    - background / foreground / suspend
+  - basic usage of echo, cat, grep
+Processes
+  - fork
+    - concurrency, concurrent execution
+    - synchronization with wait() / waitpid()
+  - exec
+  - orphaned processes ("daemons")
+  - zombies/reaping
+  - process groups, setpgid(), how a shell handles groups with signals, etc.
+  - retrieving status from exited child processes with macros: WIFEXITED/WIFSTOPPED/WIFSIGNALED/etc.
+Exceptions
+  - asynchronous vs. synchronous
+  - traps, faults, aborts
+  - system calls
+Signals
+    - Signal blocking
+    - Sending vs. receiving a signal
+    - SIGCHLD, SIGINT, SIGTSTP, SIGCONT, SIGTERM, SIGKILL
+    - Default actions, overriding with handlers or with SIG_DFL (default) or SIG_IGN (ignore).
+    - Signal blocking with sigprocmask()
+Virtual Memory
+  - Virtual addressing and pages
+  - Page table / Page table entries (PTE)
+  - Identifying VPN and VPO given a VA
+  - Identifying PPN and PPO given a VA and a PTE
+  - Identifying a PA given a PPN and PPO
+  - TLB - access using TLB index, TLB tag
+  - Find a byte of data given a virtual address

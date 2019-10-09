@@ -26,6 +26,9 @@ Shell usage
   - basic usage of echo, cat, grep
     > Grep: ./program | grep [STRING]
       * Ex. ./program | grep bob  => gives you all lines that contains "bob" in them (-v is everything but)
+    > Echo:
+
+    > Cat: 
 
 Processes
   - fork
@@ -37,9 +40,13 @@ Processes
         // Child will print both "a" and "b", but parent will only print "b"
 
     - concurrency, concurrent execution
+      > Both child and parent will jump back and forth with execution
     - synchronization with wait() / waitpid()
+      > wait(): Will make that process wait until its children are done, and then it will reap them
+      >
   - exec
     > Replaces current process execution with the parameters given
+    > Only returns if it errors
   - orphaned processes ("daemons")
     > Process thats always running in the background
     > Its important that it cleans up its children, because if it doesn't then it will take up a whole lot of resources
@@ -50,7 +57,13 @@ Processes
 
 Exceptions
   - asynchronous vs. synchronous
+    > Asynchronous: Interrupts the execution of your program sequencially, Something you cause
+    > Synchronous: Will jump you out of your code once its hit, Most often system calls
+      * Reading from a file, exec, writing to a file, dup2()
   - traps, faults, aborts
+    > Traps: Are intentional, system call
+    > Faults: Unintentional, but might be recoverable (but some are not), something you have caused
+    > Aborts: Unintentional and unrecoverable. Called from outside of you
   - system calls
 
 Signals
@@ -66,10 +79,15 @@ Virtual Memory
   - Virtual addressing and pages
   - Page table / Page table entries (PTE)
   - Identifying VPN and VPO given a VA
+    > Page size = N, so where 2^n = N
+    > 2^n, where n is the number of bits for the VPO, and the VPN is the rest
   - Identifying PPN and PPO given a VA and a PTE
   - Identifying a PA given a PPN and PPO
   - TLB - access using TLB index, TLB tag
     > TLB Hit when it is in the table AND valid
+    > TLB Stuff comes from VPN first
+      * TLBI is TLB Index and comes from the number of sets
+      * TLBT is TLB Tag, and comes from the rest of the VPN
   - Find a byte of data given a virtual address
 
 

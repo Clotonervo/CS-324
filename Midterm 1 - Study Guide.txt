@@ -8,22 +8,42 @@ Environment
 File descriptors
   - stdin, stdout, stderr
   - redirection / duplication within a program
+    > /bin/cat file.txt 2 >  &1
+      * Redirect stderr(2) to stdout(1)
   - pipe concepts
+    > Takes stdout of the first program and puts it into stdin of next program
+      * ./program1 | ./program2
   - dup2() concepts
+    > dup2(2, 1)
+      * Takes the stdout(1) and pushes it into stderr(2)
 
 Shell usage
   - file descriptor redirection / duplication
   - shell pipelines
   - jobs / job control
     - background / foreground / suspend
+    > Every Job has a process, but not every process is a job
   - basic usage of echo, cat, grep
+    > Grep: ./program | grep [STRING]
+      * Ex. ./program | grep bob  => gives you all lines that contains "bob" in them (-v is everything but)
 
 Processes
   - fork
+      > if ((pid = fork()) == 0){
+              printf("a");
+            }
+        printf("b");
+
+        // Child will print both "a" and "b", but parent will only print "b"
+
     - concurrency, concurrent execution
     - synchronization with wait() / waitpid()
   - exec
+    > Replaces current process execution with the parameters given
   - orphaned processes ("daemons")
+    > Process thats always running in the background
+    > Its important that it cleans up its children, because if it doesn't then it will take up a whole lot of resources
+    > Zombie children wont be reaped unless explicitly 
   - zombies/reaping
   - process groups, setpgid(), how a shell handles groups with signals, etc.
   - retrieving status from exited child processes with macros: WIFEXITED/WIFSTOPPED/WIFSIGNALED/etc.
@@ -36,11 +56,12 @@ Exceptions
 Signals
     - Signal blocking
       > You can't block a SIGKILL or a SIGSTOP signal
+      > LOOK AT SHELL LAB FOR MAKING A MASK
     - Sending vs. receiving a signal
     - SIGCHLD, SIGINT, SIGTSTP, SIGCONT, SIGTERM, SIGKILL
     - Default actions, overriding with handlers or with SIG_DFL (default) or SIG_IGN (ignore).
     - Signal blocking with sigprocmask()
-    
+
 Virtual Memory
   - Virtual addressing and pages
   - Page table / Page table entries (PTE)
@@ -48,4 +69,10 @@ Virtual Memory
   - Identifying PPN and PPO given a VA and a PTE
   - Identifying a PA given a PPN and PPO
   - TLB - access using TLB index, TLB tag
+    > TLB Hit when it is in the table AND valid
   - Find a byte of data given a virtual address
+
+
+
+
+

@@ -3,7 +3,14 @@
 
 Environment
   - setting environment for program execution
+    > TEST="this-is-a-test"
+    > export TEST
+      * OR export ENV_NAME="this is a test"
+    > unset TEST - will remove variable
+    > echo $TEST - will print its definition
   - retrieving environment (e.g., from within C)
+    > getenv("SLOWCAT_SLEEP_TIME") ---> getnenv("ENV_NAME")
+
 
 File descriptors
   - stdin, stdout, stderr

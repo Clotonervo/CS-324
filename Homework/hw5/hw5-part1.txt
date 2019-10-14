@@ -1,8 +1,8 @@
 1. 	the socket() system call and the connect() system call are required to prepare a socket.
 
-2. 	nc -k -u -l 1234  (check this)
+2. 	h0pkins3@louisiana:~/Desktop/CS-324/Homework/hw5$ nc -k -u -l 1234  (check this)
 
-3. 	a) netstat -l -u -n --program
+3. 	a) h0pkins3@louisiana:~/Desktop/CS-324/Homework/hw5$ netstat -l -u -n --program
 
 	b)
 		│(Not all processes could be identified, non-owned process info
@@ -31,4 +31,31 @@
 		│udp6       0      0 :::52294                :::*                                -                   
 		│udp6       0      0 :::5353                 :::*                                -    
 	
-	c)
+	c) It seems like I am seeing all the udp listeners, including the netcat server that I just established with a PID of 21774
+
+4. h0pkins3@louisiana:~/Desktop/CS-324/Homework/hw5$ sha1sum client
+		4655ab215cf4cf435cb4f9b3510ed49116a4073e  client
+
+5. 	a) h0pkins3@louisiana:~/Desktop/CS-324/Homework/hw5$ ./client 0.0.0.0 1234 foo bar baz catvideo
+
+	b) foobarbazcatvideo
+
+6. 	│h0pkins3@louisiana:~/Desktop/CS-324/Homework/hw5$ netstat -u -n --program                         	 |  
+	│(Not all processes could be identified, non-owned process info will not be shown, you would have to |
+	|be root to see it all.)  																			 │
+	│Active Internet connections (w/o servers) 															 |
+	|Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    │
+	│udp        0      0 127.0.0.1:37281         127.0.0.1:1234         ESTABLISHED 22744/./client       |                            
+
+7.	h0pkins3@louisiana:~/Desktop/CS-324/Homework/hw5$ netstat -u -n --program
+	│(Not all processes could be identified, non-owned process info
+	│ will not be shown, you would have to be root to see it all.)
+	│Active Internet connections (w/o servers)
+	│Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name 
+
+8.
+
+
+
+
+

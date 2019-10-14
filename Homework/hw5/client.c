@@ -66,7 +66,8 @@ int main(int argc, char *argv[]) {
 	for (j = 3; j < argc; j++) {
 		len = strlen(argv[j]) + 1;
 		/* +1 for terminating null byte */
-
+        sleep(2);
+        
 		if (len + 1 > BUF_SIZE) {
 			fprintf(stderr,
 					"Ignoring long message in argument %d\n", j);
@@ -78,7 +79,7 @@ int main(int argc, char *argv[]) {
 			exit(EXIT_FAILURE);
 		}
 
-		nread = read(sfd, buf, BUF_SIZE);
+		//nread = read(sfd, buf, BUF_SIZE);
 		if (nread == -1) {
 			perror("read");
 			exit(EXIT_FAILURE);

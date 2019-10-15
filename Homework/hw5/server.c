@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
 
 	/* Read datagrams and echo them back to sender */
     listen(SOCK_STREAM, 100);
-    accept(sfd,(struct sockaddr *) &peer_addr, &peer_addr_len, 0)
+    accept(sfd,(struct sockaddr *) &peer_addr, &peer_addr_len);
 	for (;;) {
 		peer_addr_len = sizeof(struct sockaddr_storage);
 		nread = recv(sfd, buf, BUF_SIZE, 0);

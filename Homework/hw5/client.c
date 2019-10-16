@@ -71,6 +71,7 @@ int main(int argc, char *argv[]) {
 		if (len + 1 > BUF_SIZE) {
 			fprintf(stderr,
 					"Ignoring long message in argument %d\n", j);
+            printf("ignoring long message\n");
 			continue;
 		}
 

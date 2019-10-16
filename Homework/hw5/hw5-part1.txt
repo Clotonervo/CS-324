@@ -206,7 +206,17 @@
 	tcp6       0      0 2620:10f:3007:a00:10050 2620:10f:3007:a06:39938 TIME_WAIT   -                     │
 	tcp6       0      0 2620:10f:3007:a00:10050 2620:10f:3007:a06:36572 TIME_WAIT   -                     │
 
-14. 
+(*)14. h0pkins3@petra:~/Desktop/CS-324/Homework/hw5$ sha1sum server 
+	c1548da68e87b5620d02c0bd85ab373c220f5a2a  server
+
+15.	a) h0pkins3@utah:~/Desktop/CS-324/Homework/hw5$ nc -k -l 1234
+	
+	b)h0pkins3@utah:~/Desktop/CS-324/Homework/hw5$ ./client 0.0.0.0 1234 foo bar baz catvideo
+
+	c)Received 140189458590648 bytes: 
+		Received 140189458590648 bytes: 
+		Received 140189458590648 bytes: 
+		Received 140189458590648 bytes: 
 
 
 

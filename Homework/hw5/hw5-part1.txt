@@ -1,4 +1,4 @@
-1. 	the socket() system call and the getaddrinfo() system call are required to prepare a socket.
+1. 	the socket() system call and the connect() system call are required to prepare a socket.
 
 2. 	h0pkins3@louisiana:~/Desktop/CS-324/Homework/hw5$ nc -k -u -l 1234  (check this)
 
@@ -220,6 +220,8 @@
 
 
 16. UDP simply sends the data, but doesn't really garuntee that the data will get there, TCP however, uses listen and accept to establish a more secure connection and maintain that connection as data is being sent over, ensuring that the data from the client gets to the server.
+
+17.
 
 
 18. h0pkins3@utah:~/Desktop/CS-324/Homework/hw5$ cat alpha.txt | xargs ./client localhost 1234 (original command ./client localhost 1234 < alpha.txt)

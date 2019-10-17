@@ -7,6 +7,7 @@
 #include <string.h>
 
 #define BUF_SIZE 500
+#define MAX_SIZE 4096
 
 int main(int argc, char *argv[]) {
 	struct addrinfo hints;
@@ -15,6 +16,7 @@ int main(int argc, char *argv[]) {
 	size_t len;
 	ssize_t nread;
 	char buf[BUF_SIZE];
+    char buffer[MAX_SIZE]
 
 	if (argc < 3) {
 		fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
@@ -63,30 +65,38 @@ int main(int argc, char *argv[]) {
 	/* Send remaining command-line arguments as separate
 	   datagrams, and read responses from server */
 
-	for (j = 3; j < argc; j++) {
-		len = strlen(argv[j]) + 1;
-		/* +1 for terminating null byte */
-        sleep(2);
-        
-		if (len + 1 > BUF_SIZE) {
-			fprintf(stderr,
-					"Ignoring long message in argument %d\n", j);
-			continue;
-		}
+    fread(buffer, sizeof(char), MAX_SIZE, stdin);
+    printf("Received %zd bytes: %s\n", nread, buffer);
+    len = strlen(buffer);
+    while (write(sfd, buffer, len) != -1) {
+        fprintf(stderr, "partial/failed write\n");
+        exit(EXIT_FAILURE);
+    }
 
-		if (write(sfd, argv[j], len) != len) {
-			fprintf(stderr, "partial/failed write\n");
-			exit(EXIT_FAILURE);
-		}
-
-		//nread = read(sfd, buf, BUF_SIZE);
-		if (nread == -1) {
-			perror("read");
-			exit(EXIT_FAILURE);
-		}
-
-		printf("Received %zd bytes: %s\n", nread, buf);
-	}
+//	for (j = 3; j < argc; j++) {
+//		len = strlen(argv[j]) + 1;
+//		/* +1 for terminating null byte */
+//        sleep(2);
+//
+//		if (len + 1 > BUF_SIZE) {
+//			fprintf(stderr,
+//					"Ignoring long message in argument %d\n", j);
+//			continue;
+//		}
+//
+//		if (write(sfd, argv[j], len) != len) {
+//			fprintf(stderr, "partial/failed write\n");
+//			exit(EXIT_FAILURE);
+//		}
+//
+//		//nread = read(sfd, buf, BUF_SIZE);
+//		if (nread == -1) {
+//			perror("read");
+//			exit(EXIT_FAILURE);
+//		}
+//
+//		printf("Received %zd bytes: %s\n", nread, buf);
+//	}
 
 	exit(EXIT_SUCCESS);
 }

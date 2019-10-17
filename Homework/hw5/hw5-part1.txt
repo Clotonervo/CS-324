@@ -221,10 +221,11 @@
 
 16. UDP simply sends the data, but doesn't really garuntee that the data will get there, TCP however, uses listen and accept to establish a more secure connection and maintain that connection as data is being sent over, ensuring that the data from the client gets to the server.
 
-17.
+17.	h0pkins3@louisiana:~/Desktop/CS-324/Homework/hw5$ sha1sum client
+		f26c9f2fbab74630772e10f12c4d1030fd34ea8b  client
 
 
-18. h0pkins3@utah:~/Desktop/CS-324/Homework/hw5$ cat alpha.txt | xargs ./client localhost 1234 (original command ./client localhost 1234 < alpha.txt)
+18. h0pkins3@utah:~/Desktop/CS-324/Homework/hw5$ cat alpha.txt | xargs ./client localhost 1234 (original command ./client localhost 1234 < alpha.txt, but i had to use the first one to get it to work for some reason)
 
 
 

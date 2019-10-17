@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
 	size_t len;
 	ssize_t nread;
 	char buf[BUF_SIZE];
-    char buffer[MAX_SIZE]
+    char buffer[MAX_SIZE];
 
 	if (argc < 3) {
 		fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
@@ -66,12 +66,22 @@ int main(int argc, char *argv[]) {
 	   datagrams, and read responses from server */
 
     fread(buffer, sizeof(char), MAX_SIZE, stdin);
-    printf("Received %zd bytes: %s\n", nread, buffer);
     len = strlen(buffer);
-    while (write(sfd, buffer, len) != -1) {
-        fprintf(stderr, "partial/failed write\n");
-        exit(EXIT_FAILURE);
+//    nread = send(sfd, buffer, len, 0);
+//    printf("Received %zd bytes: %s\n", nread, buffer);
+    while (len > 0)
+    {
+        n = send(sfd, buffer, len, 0);
+        if (n <= 0)
+            break;
+        buffer += n;
+        len -= n;
     }
+
+//    while (write(sfd, buffer, len) != -1) {
+//        fprintf(stderr, "partial/failed write\n");
+//        exit(EXIT_FAILURE);
+//    }
 
 //	for (j = 3; j < argc; j++) {
 //		len = strlen(argv[j]) + 1;

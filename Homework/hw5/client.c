@@ -16,7 +16,8 @@ int main(int argc, char *argv[]) {
 	size_t len;
 	ssize_t nread;
 	char buf[BUF_SIZE];
-    char* buffer;
+    char buffer[MAX_SIZE];
+    char* p;
 
 	if (argc < 3) {
 		fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
@@ -64,17 +65,17 @@ int main(int argc, char *argv[]) {
 
 	/* Send remaining command-line arguments as separate
 	   datagrams, and read responses from server */
-
-    fread(buffer, sizeof(char), MAX_SIZE, stdin);
-    len = strlen(buffer);
+    p = buffer;
+    fread(p, sizeof(char), MAX_SIZE, stdin);
+    len = strlen(p);
 //    nread = send(sfd, buffer, len, 0);
 //    printf("Received %zd bytes: %s\n", nread, buffer);
     while (len > 0)
     {
-        nread = send(sfd, buffer, len, 0);
+        nread = send(sfd, p, len, 0);
         if (nread <= 0)
             break;
-        buffer += nread;
+        p += nread;
         len -= nread;
     }
 

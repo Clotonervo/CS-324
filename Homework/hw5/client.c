@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
 	size_t len;
 	ssize_t nread;
 	char buf[BUF_SIZE];
-    char buffer[MAX_SIZE];
+    char* buffer;
 
 	if (argc < 3) {
 		fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
@@ -71,11 +71,11 @@ int main(int argc, char *argv[]) {
 //    printf("Received %zd bytes: %s\n", nread, buffer);
     while (len > 0)
     {
-        n = send(sfd, buffer, len, 0);
-        if (n <= 0)
+        nread = send(sfd, buffer, len, 0);
+        if (nread <= 0)
             break;
-        buffer += n;
-        len -= n;
+        buffer += nread;
+        len -= nread;
     }
 
 //    while (write(sfd, buffer, len) != -1) {

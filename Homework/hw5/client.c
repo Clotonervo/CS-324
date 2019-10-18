@@ -100,13 +100,13 @@ int main(int argc, char *argv[]) {
 //			exit(EXIT_FAILURE);
 //		}
 //
-		nread = read(sfd, buf, BUF_SIZE);
+		nread = read(sfd, buffer, BUF_SIZE);
 		if (nread == -1) {
 			perror("read");
 			exit(EXIT_FAILURE);
 		}
 //
-		printf("Received %zd bytes: %s\n", nread, buf);
+		printf("Received %zd bytes: %s\n", nread, buffer);
 //	}
 
 	exit(EXIT_SUCCESS);

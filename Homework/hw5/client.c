@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
 	/* Send remaining command-line arguments as separate
 	   datagrams, and read responses from server */
     p = buffer;
-    fread(p, sizeof(char), MAX_SIZE, stdin);
+    nread = fread(p, sizeof(char), MAX_SIZE, stdin);
     printf("Received %zd bytes\n", nread);
     len = strlen(p);
 //    nread = send(sfd, buffer, len, 0);

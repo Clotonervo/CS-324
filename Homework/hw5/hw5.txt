@@ -40,12 +40,15 @@
 
 	b) foobarbazcatvideo
 
-6. 	│h0pkins3@louisiana:~/Desktop/CS-324/Homework/hw5$ netstat -u -n --program                         	 |  
-	│(Not all processes could be identified, non-owned process info will not be shown, you would have to |
-	|be root to see it all.)  																			 │
-	│Active Internet connections (w/o servers) 															 |
-	|Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    │
-	│udp        0      0 127.0.0.1:37281         127.0.0.1:1234         ESTABLISHED 22744/./client       |                            
+6. 	│h0pkins3@louisiana:~/Desktop/CS-324/Homework/hw5$ netstat -u -n --program                         	  
+    │(Not all processes could be identified, non-owned process info
+    │ will not be shown, you would have to be root to see it all.)
+    │Active Internet connections (w/o servers)
+    │Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program
+    │name
+    │udp        0      0 127.0.0.1:1234          127.0.0.1:54258         ESTABLISHED 11184/nc
+    │udp        0      0 127.0.0.1:54258         127.0.0.1:1234          ESTABLISHED 11189/./client
+                            
 
 7.	h0pkins3@louisiana:~/Desktop/CS-324/Homework/hw5$ netstat -u -n --program
 	│(Not all processes could be identified, non-owned process info
@@ -206,23 +209,23 @@
 	tcp6       0      0 2620:10f:3007:a00:10050 2620:10f:3007:a06:39938 TIME_WAIT   -                     │
 	tcp6       0      0 2620:10f:3007:a00:10050 2620:10f:3007:a06:36572 TIME_WAIT   -                     │
 
-(*)14. h0pkins3@petra:~/Desktop/CS-324/Homework/hw5$ sha1sum server 
-	c1548da68e87b5620d02c0bd85ab373c220f5a2a  server
+14. h0pkins3@petra:~/Desktop/CS-324/Homework/hw5$ sha1sum server 
+	237167a286b33164d713b3f83970b751fc368aaf  server
 
-15.	a) h0pkins3@utah:~/Desktop/CS-324/Homework/hw5$ nc -k -l 1234
+15.	a)  h0pkins3@utah:~/Desktop/CS-324/Homework/hw5$ ./server 1234
 	
-	b)h0pkins3@utah:~/Desktop/CS-324/Homework/hw5$ ./client 0.0.0.0 1234 foo bar baz catvideo
+	b)  h0pkins3@utah:~/Desktop/CS-324/Homework/hw5$ ./client 0.0.0.0 1234 foo bar baz catvideo
 
-	c)Received 140189458590648 bytes: 
-		Received 140189458590648 bytes: 
-		Received 140189458590648 bytes: 
-		Received 140189458590648 bytes: 
+	c)  Received 4 bytes from localhost:35060 
+        Received 4 bytes from localhost:35060 
+        Received 4 bytes from localhost:35060  
+        Received 9 bytes from localhost:35060  
 
 
-16. UDP simply sends the data, but doesn't really garuntee that the data will get there, TCP however, uses listen and accept to establish a more secure connection and maintain that connection as data is being sent over, ensuring that the data from the client gets to the server.
+16. UDP simply sends the data, but doesn't really garuntee that the data will get there, TCP however, uses listen and accept to establish a more secure connection and maintain that connection as data is being sent over, ensuring that the data from the client gets to the server. TCP is more secure and error checks while UDP simply will take and send data without worrying about it.
 
 17.	h0pkins3@louisiana:~/Desktop/CS-324/Homework/hw5$ sha1sum client
-		20b4c3640014a486f991d43c93635a8a1dd12277  client
+		5b65a353e84ae48db7990127f19a67aea887df30  client
 
 
 18.	a) nc -l 1234 | sha1sum
@@ -230,6 +233,36 @@
 
 	b) h0pkins3@utah:~/Desktop/CS-324/Homework/hw5$ ./client localhost 1234 < alpha.txt
 
+
+19. h0pkins3@arc170:~/Desktop/hw5$ ./client www-notls.imaal.byu.edu 80 < file-http.txt 
+        Received 967 bytes: HTTP/1.1 200 OK
+        Date: Fri, 18 Oct 2019 20:25:10 GMT
+        Server: Apache/2.4.25 (Debian)
+        Content-length: 809
+        Vary: Accept-Encoding
+        Content-Type: text/plain
+
+
+        1. Be still, my soul: The Lord is on thy side;
+        With patience bear thy cross of grief or pain.
+        Leave to thy God to order and provide;
+        In ev'ry change he faithful will remain.
+        Be still, my soul: Thy best, thy heav'nly Friend
+        Thru thorny ways leads to a joyful end.
+
+        2. Be still, my soul: Thy God doth undertake
+        To guide the future as he has the past.
+        Thy hope, thy confidence let nothing shake;
+        All now mysterious shall be bright at last.
+        Be still, my soul: The waves and winds still know
+        His voice who ruled them while he dwelt below.
+
+        3. Be still, my soul: The hour is hast'ning on
+        When we shall be forever with the Lord,
+        When disappointment, grief, and fear are gone,
+        Sorrow forgot, love's purest joys restored.
+        Be still, my soul: When change and tears are past,
+        All safe and blessed we shall meet at last.
 
 
 

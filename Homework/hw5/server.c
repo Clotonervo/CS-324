@@ -62,29 +62,31 @@ int main(int argc, char *argv[]) {
 	freeaddrinfo(result);           /* No longer needed */
 
 	/* Read datagrams and echo them back to sender */
-    listen(SOCK_STREAM, 100);
-    accept(sfd,(struct sockaddr *) &peer_addr, &peer_addr_len);
-	for (;;) {
+    peer_addr_len = sizeof(struct sockaddr_storage);
+    listen(sfd, 100);
+    int cfd = accept(sfd,(struct sockaddr *) &peer_addr, &peer_addr_len);
+    for (;;) {
 		peer_addr_len = sizeof(struct sockaddr_storage);
-		nread = recv(sfd, buf, BUF_SIZE, 0);
-        if (nread == 0)
-            break;
-        
+		nread = recv(cfd, buf, BUF_SIZE, 0);
+
 		if (nread == -1)
 			continue;               /* Ignore failed request */
 
+        if (nread == 0)
+            break;
 		char host[NI_MAXHOST], service[NI_MAXSERV];
 
 		s = getnameinfo((struct sockaddr *) &peer_addr,
 				peer_addr_len, host, NI_MAXHOST,
 				service, NI_MAXSERV, NI_NUMERICSERV);
+
 		if (s == 0)
 			printf("Received %zd bytes from %s:%s\n",
 					nread, host, service);
 		else
 			fprintf(stderr, "getnameinfo: %s\n", gai_strerror(s));
 
-		if (sendto(sfd, buf, nread, 0,
+		if (sendto(cfd, buf, nread, 0,
 					(struct sockaddr *) &peer_addr,
 					peer_addr_len) != nread)
 			fprintf(stderr, "Error sending response\n");

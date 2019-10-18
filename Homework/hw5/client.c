@@ -69,10 +69,10 @@ int main(int argc, char *argv[]) {
     fread(p, sizeof(char), MAX_SIZE, stdin);
     len = strlen(p);
 //    nread = send(sfd, buffer, len, 0);
-//    printf("Received %zd bytes: %s\n", nread, buffer);
     while (len > 0)
     {
         nread = send(sfd, p, len, 0);
+        printf("Received %zd bytes: %s\n", nread, buffer);
         if (nread <= 0)
             break;
         p += nread;

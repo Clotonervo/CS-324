@@ -225,8 +225,9 @@
 		f26c9f2fbab74630772e10f12c4d1030fd34ea8b  client
 
 
-18. h0pkins3@utah:~/Desktop/CS-324/Homework/hw5$ cat alpha.txt | xargs ./client localhost 1234 (original command ./client localhost 1234 < alpha.txt, but i had to use the first one to get it to work for some reason)
+18.	a) nc -k -l 1234 | sha1sum
 
+	b) h0pkins3@utah:~/Desktop/CS-324/Homework/hw5$ ./client localhost 1234 < alpha.txt
 
 
 

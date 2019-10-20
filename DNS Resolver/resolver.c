@@ -5,6 +5,7 @@
 #include<stdlib.h>
 #include<sys/types.h>
 #include<sys/socket.h>
+#include <errno.h>
 
 typedef unsigned int dns_rr_ttl;
 typedef unsigned short dns_rr_type;
@@ -112,6 +113,13 @@ void canonicalize_name(char *name) {
 	}
 }
 
+void print_req_array(char* array){
+	int i = 0;
+	for (i=0;i < strlen(array);i++) {
+    	printf("%x\n",array[i]);
+	}
+}
+
 int name_ascii_to_wire(char *name, unsigned char *wire) {
 	/* 
 	 * Convert a DNS name from string representation (dot-separated labels)
@@ -123,6 +131,31 @@ int name_ascii_to_wire(char *name, unsigned char *wire) {
 	 *              wire-formatted name should be constructed
 	 * OUTPUT: the length of the wire-formatted name.
 	 */
+	printf("Converting DNS Name into ascii\n");
+	canonicalize_name(name);
+
+	printf("%s\n", name);
+    char* token; 
+    char* rest = name; 
+	int index = 0;
+  
+    while ((token = strtok_r(rest, ".", &rest))) {
+		printf("length = %ld ",strlen(token));
+        printf("%s\n", token); 
+		wire[index] = (char) (strlen(token));
+		index++;
+
+		for(int i = 0; i < strlen(token); i++){
+			wire[index] = (char) token[i] & 0xff;
+			// printf("wire[%d] = %x\n", index, wire[index]);
+			index++;
+		}
+	}
+	wire[index] = '\0';
+	index++;
+
+
+	return index;
 }
 
 char *name_ascii_from_wire(unsigned char *wire, int *indexp) {
@@ -180,6 +213,25 @@ int rr_to_wire(dns_rr rr, unsigned char *wire, int query_only) {
 	 */
 }
 
+void make_header(unsigned char* header)
+{
+	unsigned short query_id = random();
+	header[0] = (char)(query_id & 0xff);
+	header[1] = (char)((query_id & 0xff00) >> 2);
+	header[2] = 0x01;
+	header[3] = 0x00;
+	header[4] = 0x00;
+	header[5] = 0x01;
+	header[6] = 0x00;
+	header[7] = 0x00;
+	header[8] = 0x00;
+	header[9] = 0x00;
+	header[10] = 0x00;
+	header[11] = 0x00;
+
+	return;
+}
+
 unsigned short create_dns_query(char *qname, dns_rr_type qtype, unsigned char *wire) {
 	/* 
 	 * Create a wire-formatted DNS (query) message using the provided byte
@@ -192,6 +244,36 @@ unsigned short create_dns_query(char *qname, dns_rr_type qtype, unsigned char *w
 	 *               message should be constructed
 	 * OUTPUT: the length of the DNS wire message
 	 */
+	printf("Creating a DNS query\n");
+
+	unsigned char header[12] = {0};
+	unsigned char query[100] = {0};
+
+
+	make_header(header);
+	printf("Header populated\n");
+	
+	int query_length = name_ascii_to_wire(qname, query);
+	query[query_length] = 0x00;
+	query_length++;
+	query[query_length] = 0x01;
+	query_length++;
+	query[query_length] = 0x00;
+	query_length++;
+	query[query_length] = 0x01;
+	query_length++;
+
+	int i = 0;
+	for(i; i < 12; i++){
+		wire[i] = header[i];
+	}
+
+	for(i = 0; i < query_length; i++){
+		wire[12 + i] = query[i];
+		// printf("wire = %x, query = %x\n", wire[12+i], query[i]);
+	}
+
+	return query_length + 12;
 }
 
 dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned char *wire) {
@@ -221,9 +303,80 @@ int send_recv_message(unsigned char *request, int requestlen, unsigned char *res
 	 *             response should be received
 	 * OUTPUT: the size (bytes) of the response received
 	 */
+	printf("Sending the query to the DNS resolver\n");
+	struct sockaddr_in address;
+	socklen_t peer_addr_len;
+	int query_length, sfd, nread;
+	unsigned char buffer[500];
+
+	memset(&address, 0, sizeof(struct sockaddr_in));
+	address.sin_family = AF_INET;
+  	address.sin_port = htons(port);
+  	address.sin_addr.s_addr = inet_addr(server);
+	peer_addr_len = sizeof(struct sockaddr_in);
+	printf("%s, %d\n", server, htons(port));
+
+
+	if ((sfd = socket(PF_INET, SOCK_STREAM, 0)) < 0){
+		printf("ERROR: CREATING SOCKET!\n");
+		printf("ERROR: %s\n", strerror(errno));
+		return -1;
+	}
+		printf("Created Socket! \n");
+		printf("Attempting to connect... \n");
+
+
+	if (connect(sfd, (struct sockaddr*) &address, peer_addr_len) < 0){
+		printf("ERROR: CONNECTING SOCKET\n");
+		printf("ERROR: %s\n", strerror(errno));
+		return -1; 
+	}
+		printf("Connected! \n");
+
+
+	if ((send(sfd, request, requestlen, 0) < 0 )){
+		printf("ERROR: SENDING REQUEST\n");
+	}
+
+	for(int i = 0; i < requestlen; i++){
+		printf("request[%d] = %x\n", i, request[i]);
+	}
+
+	nread = recv(sfd, buffer, 500, 0);
+
+	if (nread == -1){
+		printf("ERROR: RETREIVING ANSWER\n");
+		return -1;
+	}
+    if (nread == 0){
+		printf("ERROR: NOTHING RECIEVED\n");
+		return 0;
+	}
+
+	memcpy(response, buffer, nread);
+	response[nread] = '\0';
+
+	return nread;
+
 }
 
-dns_answer_entry *resolve(char *qname, char *server, char *port) {
+dns_answer_entry *resolve(char *qname, char *server, char *port) 
+{
+	unsigned char wire[100] = {0};
+	char query_name[100] = {0};
+	unsigned char response[100] = {0};
+	unsigned short converted_port = 0;
+
+	strcpy(query_name, qname);
+	printf("query_name = %s\n", query_name);
+	int query_length = create_dns_query(query_name, 0x01, wire);
+	converted_port = atoi(port);
+	int answer_length = send_recv_message(wire, query_length, response, server, converted_port);
+	printf("answer_length = %d\n", answer_length);
+
+
+
+
 }
 
 int main(int argc, char *argv[]) {

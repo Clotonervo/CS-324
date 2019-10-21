@@ -213,6 +213,7 @@ int rr_to_wire(dns_rr rr, unsigned char *wire, int query_only) {
 	 */
 }
 
+
 void make_header(unsigned char* header)
 {
 	unsigned short query_id = random();
@@ -317,7 +318,7 @@ int send_recv_message(unsigned char *request, int requestlen, unsigned char *res
 	printf("%s, %d\n", server, htons(port));
 
 
-	if ((sfd = socket(PF_INET, SOCK_STREAM, 0)) < 0){
+	if ((sfd = socket(PF_INET, SOCK_DGRAM, 0)) < 0){
 		printf("ERROR: CREATING SOCKET!\n");
 		printf("ERROR: %s\n", strerror(errno));
 		return -1;
@@ -338,10 +339,6 @@ int send_recv_message(unsigned char *request, int requestlen, unsigned char *res
 		printf("ERROR: SENDING REQUEST\n");
 	}
 
-	for(int i = 0; i < requestlen; i++){
-		printf("request[%d] = %x\n", i, request[i]);
-	}
-
 	nread = recv(sfd, buffer, 500, 0);
 
 	if (nread == -1){
@@ -360,6 +357,20 @@ int send_recv_message(unsigned char *request, int requestlen, unsigned char *res
 
 }
 
+void print_query(unsigned char* query, int query_length)
+{
+		for(int i = 0; i < query_length; i++){
+		printf("request[%d] = %x\n", i, query[i]);
+	}
+}
+
+void print_response(unsigned char* response, int response_size)
+{
+	for(int i = 0; i < response_size; i++){
+		printf("response[%d] = %x\n", i, response[i]);
+	}
+}
+
 dns_answer_entry *resolve(char *qname, char *server, char *port) 
 {
 	unsigned char wire[100] = {0};
@@ -374,8 +385,7 @@ dns_answer_entry *resolve(char *qname, char *server, char *port)
 	int answer_length = send_recv_message(wire, query_length, response, server, converted_port);
 	printf("answer_length = %d\n", answer_length);
 
-
-
+	print_response(response, answer_length);
 
 }
 

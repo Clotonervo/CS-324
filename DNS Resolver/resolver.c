@@ -172,6 +172,10 @@ char *name_ascii_from_wire(unsigned char *wire, int *indexp) {
 	 * OUTPUT: a string containing the string representation of the name,
 	 *              allocated on the heap.
 	 */
+	printf("Getting answer name from wire..\n");
+
+	printf("%x\n", wire[*indexp]);
+
 }
 
 dns_rr rr_from_wire(unsigned char *wire, int *indexp, int query_only) {
@@ -289,6 +293,23 @@ dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned ch
 	 * OUTPUT: a linked list of dns_answer_entrys the value member of each
 	 * reflecting either the name or IP address.  If
 	 */
+		// printf("Got here\n");
+		//  print_bytes(wire, 49);
+
+
+
+	int number_of_answers = (int)wire[7];
+	printf("number of answers = %d\n", number_of_answers);
+
+	dns_answer_entry* head = malloc(sizeof(dns_answer_entry));
+	int index = 12 + strlen(qname) + 6;
+
+	for(int i = 0; i < number_of_answers; i++){
+		char* answer_name = name_ascii_from_wire(wire, &index);
+	}
+	
+
+	return head;
 }
 
 int send_recv_message(unsigned char *request, int requestlen, unsigned char *response, char *server, unsigned short port) {
@@ -339,7 +360,7 @@ int send_recv_message(unsigned char *request, int requestlen, unsigned char *res
 		printf("ERROR: SENDING REQUEST\n");
 	}
 
-	nread = recv(sfd, buffer, 500, 0);
+	nread = recv(sfd, response, 500, 0);
 
 	if (nread == -1){
 		printf("ERROR: RETREIVING ANSWER\n");
@@ -350,7 +371,7 @@ int send_recv_message(unsigned char *request, int requestlen, unsigned char *res
 		return 0;
 	}
 
-	memcpy(response, buffer, nread);
+	// memcpy(response, buffer, nread);
 	response[nread] = '\0';
 
 	return nread;
@@ -375,18 +396,23 @@ dns_answer_entry *resolve(char *qname, char *server, char *port)
 {
 	unsigned char wire[100] = {0};
 	char query_name[100] = {0};
-	unsigned char response[100] = {0};
+	unsigned char* response = (unsigned char*) malloc(1024);
 	unsigned short converted_port = 0;
 
 	strcpy(query_name, qname);
 	printf("query_name = %s\n", query_name);
 	int query_length = create_dns_query(query_name, 0x01, wire);
 	converted_port = atoi(port);
-	int answer_length = send_recv_message(wire, query_length, response, server, converted_port);
-	printf("answer_length = %d\n", answer_length);
+	int response_length = send_recv_message(wire, query_length, response, server, converted_port);
+	printf("response_length = %d\n", response_length);
 
-	print_response(response, answer_length);
+	// print_response(response, response_length);
 
+	// print_bytes(response, response_length);
+
+	dns_answer_entry* answer = get_answer_address(qname, 0x01, response);
+	free(response);
+	return answer;
 }
 
 int main(int argc, char *argv[]) {

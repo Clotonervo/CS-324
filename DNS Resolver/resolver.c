@@ -131,17 +131,16 @@ int name_ascii_to_wire(char *name, unsigned char *wire) {
 	 *              wire-formatted name should be constructed
 	 * OUTPUT: the length of the wire-formatted name.
 	 */
-	printf("Converting DNS Name into ascii\n");
+	// printf("Converting DNS Name into ascii\n");
 	canonicalize_name(name);
 
-	printf("%s\n", name);
     char* token; 
     char* rest = name; 
 	int index = 0;
   
     while ((token = strtok_r(rest, ".", &rest))) {
-		printf("length = %ld ",strlen(token));
-        printf("%s\n", token); 
+		// printf("length = %ld ",strlen(token));
+        // printf("%s\n", token); 
 		wire[index] = (char) (strlen(token));
 		index++;
 
@@ -172,10 +171,46 @@ char *name_ascii_from_wire(unsigned char *wire, int *indexp) {
 	 * OUTPUT: a string containing the string representation of the name,
 	 *              allocated on the heap.
 	 */
-	printf("Getting answer name from wire..\n");
+	// printf("Getting answer name from wire..\n");
 
-	printf("%x\n", wire[*indexp]);
+	unsigned char c = wire[*indexp];
+	char* name = malloc(500);
+	int name_index = 0;
 
+	while(c != 0){
+
+		if (c < 192){
+			// *indexp = (int) c;
+			int additional_index = 0;
+			c = wire[*indexp];
+			*indexp += 1;
+			// printf("%d\n", c);
+			for (int i = 0; i < c; i++){
+			// printf("%d\n", *indexp + i);
+				name[name_index + i] = wire[*indexp + i];
+				additional_index++;
+			}
+			name_index += additional_index;
+			*indexp += additional_index;
+
+			if(wire[*indexp]){
+				name[name_index] = '.';
+			}
+			name_index++;
+			c = wire[*indexp];
+
+		}
+		else {
+			// indexp++;
+			*indexp += 1;
+			int pointer_index = wire[*indexp];
+
+			c = pointer_index & 0x0f;
+			*indexp = (int) c;
+		}
+	}
+	// print_bytes(name, 16);
+	return name;
 }
 
 dns_rr rr_from_wire(unsigned char *wire, int *indexp, int query_only) {
@@ -195,6 +230,25 @@ dns_rr rr_from_wire(unsigned char *wire, int *indexp, int query_only) {
 	 *              rdata_len, and rdata are skipped.
 	 * OUTPUT: the resource record (struct)
 	 */
+	int beginning_index = *indexp;
+
+	char* answer_name = name_ascii_from_wire(wire, indexp);
+
+
+	dns_rr_type type = wire[beginning_index + 3];
+	dns_rr_class class = wire[beginning_index + 5];
+	dns_rdata_len length = wire[beginning_index + 11];
+
+	unsigned char x[100] = {0};
+
+	for(int i = 0; i < length; i++){
+		x[i] = wire[beginning_index + 12 + i];
+	}
+	x[length] = '\0';
+
+	dns_rr resource = {answer_name, type, class, 0, length, x};
+	return resource;
+
 }
 
 
@@ -249,14 +303,14 @@ unsigned short create_dns_query(char *qname, dns_rr_type qtype, unsigned char *w
 	 *               message should be constructed
 	 * OUTPUT: the length of the DNS wire message
 	 */
-	printf("Creating a DNS query\n");
+	// printf("Creating a DNS query\n");
 
 	unsigned char header[12] = {0};
 	unsigned char query[100] = {0};
 
 
 	make_header(header);
-	printf("Header populated\n");
+	// printf("Header populated\n");
 	
 	int query_length = name_ascii_to_wire(qname, query);
 	query[query_length] = 0x00;
@@ -297,15 +351,20 @@ dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned ch
 		//  print_bytes(wire, 49);
 
 
-
 	int number_of_answers = (int)wire[7];
-	printf("number of answers = %d\n", number_of_answers);
+	// printf("number of answers = %d\n", number_of_answers);
 
 	dns_answer_entry* head = malloc(sizeof(dns_answer_entry));
 	int index = 12 + strlen(qname) + 6;
 
 	for(int i = 0; i < number_of_answers; i++){
-		char* answer_name = name_ascii_from_wire(wire, &index);
+		dns_rr record = rr_from_wire(wire, &index, 0);
+
+
+		if(strcmp(record.name, qname) == 0){
+			printf("test \n");
+
+		}
 	}
 	
 
@@ -408,7 +467,7 @@ dns_answer_entry *resolve(char *qname, char *server, char *port)
 
 	// print_response(response, response_length);
 
-	// print_bytes(response, response_length);
+	print_bytes(response, response_length);
 
 	dns_answer_entry* answer = get_answer_address(qname, 0x01, response);
 	free(response);

@@ -7,6 +7,16 @@
 #include<sys/socket.h>
 #include <errno.h>
 
+/*TODO:
+- Fix the CNAME= 5
+- Handle multiple answers
+- Find memory leaks
+
+
+- Run tests to see what else needs to be done
+
+*/
+
 typedef unsigned int dns_rr_ttl;
 typedef unsigned short dns_rr_type;
 typedef unsigned short dns_rr_class;
@@ -209,7 +219,6 @@ char *name_ascii_from_wire(unsigned char *wire, int *indexp) {
 			*indexp = (int) c;
 		}
 	}
-	// print_bytes(name, 16);
 	return name;
 }
 
@@ -231,6 +240,7 @@ dns_rr rr_from_wire(unsigned char *wire, int *indexp, int query_only) {
 	 * OUTPUT: the resource record (struct)
 	 */
 	int beginning_index = *indexp;
+	// print_bytes(wire, 89);
 
 	char* answer_name = name_ascii_from_wire(wire, indexp);
 
@@ -239,14 +249,15 @@ dns_rr rr_from_wire(unsigned char *wire, int *indexp, int query_only) {
 	dns_rr_class class = wire[beginning_index + 5];
 	dns_rdata_len length = wire[beginning_index + 11];
 
-	unsigned char x[100] = {0};
+	unsigned char* data = malloc(sizeof(unsigned char*) * 100);
+
 
 	for(int i = 0; i < length; i++){
-		x[i] = wire[beginning_index + 12 + i];
+		*(data + i) = (wire[beginning_index + 12 + i] );
 	}
-	x[length] = '\0';
+	*indexp = beginning_index + 12 + length;
+	dns_rr resource = {answer_name, type, class, 0, length, data};
 
-	dns_rr resource = {answer_name, type, class, 0, length, x};
 	return resource;
 
 }
@@ -308,11 +319,15 @@ unsigned short create_dns_query(char *qname, dns_rr_type qtype, unsigned char *w
 	unsigned char header[12] = {0};
 	unsigned char query[100] = {0};
 
+	// printf("qname = %s\n", qname);
+
 
 	make_header(header);
 	// printf("Header populated\n");
+
 	
 	int query_length = name_ascii_to_wire(qname, query);
+
 	query[query_length] = 0x00;
 	query_length++;
 	query[query_length] = 0x01;
@@ -331,6 +346,8 @@ unsigned short create_dns_query(char *qname, dns_rr_type qtype, unsigned char *w
 		wire[12 + i] = query[i];
 		// printf("wire = %x, query = %x\n", wire[12+i], query[i]);
 	}
+	// print_bytes(wire, query_length + 12);
+
 
 	return query_length + 12;
 }
@@ -350,24 +367,46 @@ dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned ch
 		// printf("Got here\n");
 		//  print_bytes(wire, 49);
 
-
+	// printf("Got here\n");
+	// print_bytes(wire, );
 	int number_of_answers = (int)wire[7];
-	// printf("number of answers = %d\n", number_of_answers);
+	printf("number_of_answers = %d\n", number_of_answers);
+	print_bytes(wire, 89);
+
+	if(number_of_answers == 0){
+		return NULL;
+	}
 
 	dns_answer_entry* head = malloc(sizeof(dns_answer_entry));
 	int index = 12 + strlen(qname) + 6;
 
 	for(int i = 0; i < number_of_answers; i++){
 		dns_rr record = rr_from_wire(wire, &index, 0);
+		// printf("record.name = %s\n", record.name);
 
-
-		if(strcmp(record.name, qname) == 0){
-			printf("test \n");
-
+		if((strcmp(record.name, qname) == 0) && record.type == 1){
+			int ip_numbers[100] = {0};
+			for(int j = 0; j < record.rdata_len; j++){
+				int ip = (int) record.rdata[j];
+				ip_numbers[j] = ip;
+			}
+			char* answer = malloc(100);
+			sprintf(answer, "%i.%i.%i.%i", ip_numbers[0], ip_numbers[1], ip_numbers[2], ip_numbers[3]);
+			head->value = answer;
+			head->next = NULL;
 		}
+		else if ((strcmp(record.name, qname) == 0) && record.type == 5){
+			printf("HAVEN'T DONE THIS PART YET, record.type == 5!\n");
+			free(head);
+			return NULL;
+		}
+		else {
+			free(head);
+			return NULL;
+		}
+		free(record.rdata);
+		free(record.name);
 	}
-	
-
 	return head;
 }
 
@@ -384,7 +423,7 @@ int send_recv_message(unsigned char *request, int requestlen, unsigned char *res
 	 *             response should be received
 	 * OUTPUT: the size (bytes) of the response received
 	 */
-	printf("Sending the query to the DNS resolver\n");
+	// printf("Sending the query to the DNS resolver\n");
 	struct sockaddr_in address;
 	socklen_t peer_addr_len;
 	int query_length, sfd, nread;
@@ -395,7 +434,7 @@ int send_recv_message(unsigned char *request, int requestlen, unsigned char *res
   	address.sin_port = htons(port);
   	address.sin_addr.s_addr = inet_addr(server);
 	peer_addr_len = sizeof(struct sockaddr_in);
-	printf("%s, %d\n", server, htons(port));
+	// printf("%s, %d\n", server, htons(port));
 
 
 	if ((sfd = socket(PF_INET, SOCK_DGRAM, 0)) < 0){
@@ -403,8 +442,8 @@ int send_recv_message(unsigned char *request, int requestlen, unsigned char *res
 		printf("ERROR: %s\n", strerror(errno));
 		return -1;
 	}
-		printf("Created Socket! \n");
-		printf("Attempting to connect... \n");
+		// printf("Created Socket! \n");
+		// printf("Attempting to connect... \n");
 
 
 	if (connect(sfd, (struct sockaddr*) &address, peer_addr_len) < 0){
@@ -412,7 +451,7 @@ int send_recv_message(unsigned char *request, int requestlen, unsigned char *res
 		printf("ERROR: %s\n", strerror(errno));
 		return -1; 
 	}
-		printf("Connected! \n");
+		// printf("Connected! \n");
 
 
 	if ((send(sfd, request, requestlen, 0) < 0 )){
@@ -432,6 +471,7 @@ int send_recv_message(unsigned char *request, int requestlen, unsigned char *res
 
 	// memcpy(response, buffer, nread);
 	response[nread] = '\0';
+
 
 	return nread;
 
@@ -459,15 +499,13 @@ dns_answer_entry *resolve(char *qname, char *server, char *port)
 	unsigned short converted_port = 0;
 
 	strcpy(query_name, qname);
-	printf("query_name = %s\n", query_name);
 	int query_length = create_dns_query(query_name, 0x01, wire);
 	converted_port = atoi(port);
 	int response_length = send_recv_message(wire, query_length, response, server, converted_port);
+
 	printf("response_length = %d\n", response_length);
-
 	// print_response(response, response_length);
-
-	print_bytes(response, response_length);
+	// print_bytes(response, response_length);
 
 	dns_answer_entry* answer = get_answer_address(qname, 0x01, response);
 	free(response);

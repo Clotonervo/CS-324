@@ -9,9 +9,7 @@
 
 /*TODO:
 - Fix the CNAME= 5
-- Handle multiple answers
 - Find memory leaks
-
 
 - Run tests to see what else needs to be done
 
@@ -352,6 +350,15 @@ unsigned short create_dns_query(char *qname, dns_rr_type qtype, unsigned char *w
 	return query_length + 12;
 }
 
+void print_list(dns_answer_entry* head){
+	dns_answer_entry* current = head;
+
+	while (current != NULL){
+		printf("%s\n", current->value);
+		current = current->next;
+	}
+}
+
 dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned char *wire) {
 	/* 
 	 * Extract the IPv4 address from the answer section, following any
@@ -371,20 +378,30 @@ dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned ch
 	// print_bytes(wire, );
 	int number_of_answers = (int)wire[7];
 	printf("number_of_answers = %d\n", number_of_answers);
-	print_bytes(wire, 89);
+	print_bytes(wire, 114);
 
 	if(number_of_answers == 0){
 		return NULL;
 	}
 
 	dns_answer_entry* head = malloc(sizeof(dns_answer_entry));
+	head->next = NULL;
+	head->value = "0";
 	int index = 12 + strlen(qname) + 6;
+	
 
 	for(int i = 0; i < number_of_answers; i++){
+		// printf("index = %d\n wire[index] = %x\n", index, wire[index]);
 		dns_rr record = rr_from_wire(wire, &index, 0);
-		// printf("record.name = %s\n", record.name);
+		printf("record.name = %s\n", record.name);
+		printf("i = %d\n", i);
+
+		printf("record.type = %d\n", record.type);
+
 
 		if((strcmp(record.name, qname) == 0) && record.type == 1){
+						// printf("record.type = 1\n");
+
 			int ip_numbers[100] = {0};
 			for(int j = 0; j < record.rdata_len; j++){
 				int ip = (int) record.rdata[j];
@@ -392,23 +409,57 @@ dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned ch
 			}
 			char* answer = malloc(100);
 			sprintf(answer, "%i.%i.%i.%i", ip_numbers[0], ip_numbers[1], ip_numbers[2], ip_numbers[3]);
-			head->value = answer;
-			head->next = NULL;
+			dns_answer_entry* new_entry = malloc(sizeof(dns_answer_entry));
+			new_entry->value = answer;
+			new_entry->next = NULL;
+			// printf("%p\n", new_entry);
+			dns_answer_entry* parent_entry = head;
+
+			while(parent_entry->next != NULL){
+				parent_entry = parent_entry->next;
+			}
+
+			parent_entry->next = new_entry;
+			// printf("%p\n", head->next);
+
 		}
 		else if ((strcmp(record.name, qname) == 0) && record.type == 5){
-			printf("HAVEN'T DONE THIS PART YET, record.type == 5!\n");
-			free(head);
-			return NULL;
+			// printf("record.type = 5\n");
+			char ip_name[100] = {0};
+			for(int j = 0; j < record.rdata_len; j++){
+				char ip = record.rdata[j];
+				ip_name[j] = ip;
+			}
+			char* answer = malloc(100);
+			dns_answer_entry* new_entry = malloc(sizeof(dns_answer_entry));
+			new_entry->value = ip_name;
+			new_entry->next = NULL;
+			// printf("%p\n", new_entry);
+			dns_answer_entry* parent_entry = head;
+
+
+			while(parent_entry->next != NULL){
+				parent_entry = parent_entry->next;
+			}
+
+			parent_entry->next = new_entry;	
 		}
 		else {
+			printf("ERROR: TYPE OR NAME NOT CORRECT!\n");
 			free(head);
 			return NULL;
 		}
+					print_list(head);
+
 		free(record.rdata);
 		free(record.name);
 	}
-	return head;
+	dns_answer_entry* ptr_to_return = head->next;
+	free(head);
+	return ptr_to_return;
 }
+
+
 
 int send_recv_message(unsigned char *request, int requestlen, unsigned char *response, char *server, unsigned short port) {
 	/* 

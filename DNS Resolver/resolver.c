@@ -8,11 +8,8 @@
 #include <errno.h>
 
 /*TODO:
-- Fix the CNAME= 5
-- Find memory leaks
-
-- Run tests to see what else needs to be done
-
+- MEMORY LEAKS
+	- In the past I have had trouble with the ascii_to_name function, look there for possible memory leaks
 */
 
 typedef unsigned int dns_rr_ttl;
@@ -187,9 +184,6 @@ char *name_ascii_from_wire(unsigned char *wire, int *indexp) {
 	// printf("initial index = %d\n", *indexp);
 
 	while(c != 0){
-	// printf("index = %d\n", *indexp);
-	// printf("%x\n", c);
-	// printf("start of loop\n");
 
 		if (c < 192){
 			// *indexp = (int) c;
@@ -299,12 +293,6 @@ dns_rr rr_from_wire(unsigned char *wire, int *indexp, int query_only) {
 			true_length = index;
 		}
 
-
-			 			// printf("true length = %d\n", true_length);
-						// printf("index = %d\n", index);
-
-
-		
 		unsigned char c = wire[(int)pointer_index];
 			//  printf("pointer_index = %x\n", pointer_index);
 			 int temp = 0;
@@ -562,7 +550,6 @@ int send_recv_message(unsigned char *request, int requestlen, unsigned char *res
   	address.sin_port = htons(port);
   	address.sin_addr.s_addr = inet_addr(server);
 	peer_addr_len = sizeof(struct sockaddr_in);
-	// printf("%s, %d\n", server, htons(port));
 
 
 	if ((sfd = socket(PF_INET, SOCK_DGRAM, 0)) < 0){
@@ -597,7 +584,6 @@ int send_recv_message(unsigned char *request, int requestlen, unsigned char *res
 		return 0;
 	}
 
-	// memcpy(response, buffer, nread);
 	response[nread] = '\0';
 
 
@@ -630,10 +616,6 @@ dns_answer_entry *resolve(char *qname, char *server, char *port)
 	int query_length = create_dns_query(query_name, 0x01, wire);
 	converted_port = atoi(port);
 	int response_length = send_recv_message(wire, query_length, response, server, converted_port);
-
-	// printf("response_length = %d\n", response_length);
-	// print_response(response, response_length);
-	// print_bytes(response, response_length);
 
 	dns_answer_entry* answer = get_answer_address(qname, 0x01, response);
 	free(response);

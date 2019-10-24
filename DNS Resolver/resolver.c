@@ -180,7 +180,7 @@ char *name_ascii_from_wire(unsigned char *wire, int *indexp) {
 	 *              allocated on the heap.
 	 */
 	// printf("Getting answer name from wire..\n");
-
+	// print_bytes(wire, 190);
 	unsigned char c = wire[*indexp];
 	char* name = malloc(500);
 	int name_index = 0;
@@ -189,42 +189,51 @@ char *name_ascii_from_wire(unsigned char *wire, int *indexp) {
 	while(c != 0){
 	// printf("index = %d\n", *indexp);
 	// printf("%x\n", c);
+	// printf("start of loop\n");
 
 		if (c < 192){
 			// *indexp = (int) c;
 			int additional_index = 0;
 			c = wire[*indexp];
 			*indexp += 1;
-			// printf("%d\n", c);
+			// printf("c = %x\n", c);
 			for (int i = 0; i < c; i++){
-			// printf("%d\n", *indexp + i);
+			//  printf("%x\n", *indexp + i);
+				name[name_index + i + 1] = 0;
 				name[name_index + i] = wire[*indexp + i];
 				additional_index++;
+							// printf("name = %s\n", name);
+
 			}
 			name_index += additional_index;
+			// printf("additional_index = %d", additional_index);
 			*indexp += additional_index;
-
+			// printf("indexp = %x\n", *indexp);
+			// printf("wire = %x\n",wire[*indexp]);
 			if(wire[*indexp]){
 				name[name_index] = '.';
 			}
 			name_index++;
 			c = wire[*indexp];
+			// printf("name = %s\n", name);
 
 		}
 		else {
 			// indexp++;
-			// printf("Got here\n");
+			// printf("is pointer\n");
 			*indexp += 1;
 			unsigned char pointer_index = wire[*indexp];
-			// printf("c = %i\n", pointer_index);
+			// printf("c = %x\n", c);
 
 
 			c = pointer_index;
 
 			*indexp = (int) c;
+						// printf("name = %s\n", name);
+
 		}
 	}
-	// printf("%s\n", name);
+	// printf("name_to_ascii = %s\n", name);
 	return name;
 }
 
@@ -260,13 +269,13 @@ dns_rr rr_from_wire(unsigned char *wire, int *indexp, int query_only) {
 	for(int i = 0; i < length; i++){
 		*(data + i) = (wire[beginning_index + 12 + i] );
 	}
-		//  printf("length = %d\n", length);
+		//  printf("beginning length = %d\n", length);
 
 
 	// printf("Before big if \n");
 	if (type == 5){
-		// printf("type = %d\n", type);
-		int true_length = 0;
+		// printf("beginning index = %d\n", beginning_index + 11);
+		int true_length, pointer_found = 0;
 		unsigned char pointer_index;
 		int index = 0;
 
@@ -276,17 +285,20 @@ dns_rr rr_from_wire(unsigned char *wire, int *indexp, int query_only) {
 			true_length += 1;
 			// printf("wire = %x\n", wire[beginning_index + 12 + i]);
 			// printf("%x\n", x);
-			if(x == 0xC0){
-				// printf("here");
-				// printf("%x\n", x);
+			if(x == 0xC0 && !pointer_found){
+				// printf("HERE______________\n");
+				// printf("i = %d\n", i);
 				pointer_index = wire[beginning_index + 12 + i + 1];
 							//  printf/("i = %d\n", i);
-
 				index = i;
+				pointer_found = 1;
 			}
 		}
 		// printf("Out of loop");
-		true_length = index;
+		if (pointer_found){
+			true_length = index;
+		}
+
 
 			 			// printf("true length = %d\n", true_length);
 						// printf("index = %d\n", index);
@@ -297,8 +309,10 @@ dns_rr rr_from_wire(unsigned char *wire, int *indexp, int query_only) {
 			//  printf("pointer_index = %x\n", pointer_index);
 			 int temp = 0;
 
-		while(c != 0){
+		while(c != 0 && pointer_index){
 			// printf("c = %x\n", c);
+						//  printf("pointer_index = %d\n", pointer_index);
+
 
 			if (c < 192){
 				temp = (int) pointer_index;
@@ -313,34 +327,13 @@ dns_rr rr_from_wire(unsigned char *wire, int *indexp, int query_only) {
 				true_length += (int) c;
 				c = wire[temp];
 
-				// index = (int) c;
-				// int additional_index = 0;
-				// c = wire[*indexp];
-				//  true_length += 1;
-				// for (int i = 0; i < c; i++){
-				// 	additional_index++;
-				// }
-				// true_length += additional_index;
-				// *indexp += additional_index;
-
-				// true_length++;
-				// c = wire[*indexp];
-				// 			printf("c = %x\n", c);
-
-	 			// printf("true length = %d\n", true_length);
-
 			}
 			else {
-				// indexp++;
-				// printf("Got here\n");
-				printf("ERROR: I HAVENT FINISHED FIRGURING OUT THE LENGTH IF THERE ARE POINTERS IN THE DATA\n");
+				printf("ERROR: SOMETHING WENT WRONG\n");
 			}
 		}
 		length = true_length;
 	}
-
-	
-	//  printf("length = %d\n", length);
 
 	dns_rr resource = {answer_name, type, class, 0, length, data};
 
@@ -400,16 +393,12 @@ unsigned short create_dns_query(char *qname, dns_rr_type qtype, unsigned char *w
 	 *               message should be constructed
 	 * OUTPUT: the length of the DNS wire message
 	 */
-	// printf("Creating a DNS query\n");
 
 	unsigned char header[12] = {0};
 	unsigned char query[100] = {0};
 
-	// printf("qname = %s\n", qname);
-
 
 	make_header(header);
-	// printf("Header populated\n");
 
 	
 	int query_length = name_ascii_to_wire(qname, query);
@@ -459,11 +448,6 @@ dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned ch
 	 * OUTPUT: a linked list of dns_answer_entrys the value member of each
 	 * reflecting either the name or IP address.  If
 	 */
-		// printf("Got here\n");
-		//  print_bytes(wire, 49);
-
-	// printf("Got here\n");
-	// print_bytes(wire, );
 	int number_of_answers = (int)wire[7];
 	// printf("number_of_answers = %d\n", number_of_answers);
 	// print_bytes(wire, 114);
@@ -481,15 +465,7 @@ dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned ch
 	
 
 	for(int i = 0; i < number_of_answers; i++){
-		// printf("index = %d\n wire[index] = %x\n", index, wire[index]);
 		dns_rr record = rr_from_wire(wire, &index, 0);
-		// printf("record.name = %s\n", record.name);
-		// printf("i = %d\n", i);
-
-		// printf("record.type = %d\n", record.type);
-		// printf("qname = %s\n", qname);
-		// printf("record.len = %d\n", record.rdata_len);
-		// printf("record.name = %s\n", record.name);
 
 			if(cname_five){
 				// printf("qname = %s\n", qname);
@@ -507,7 +483,7 @@ dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned ch
 				}
 
 				parent->next = cname_entry;
-				// printf("cnameentry = %s\n", cname_entry->value);
+
 				cname_five = 0;
 			}
 
@@ -543,24 +519,7 @@ dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned ch
 			qname = record.name;
 			cname_five = 1;
 			prev_record_length = record.rdata_len;
-			// printf("record.rdata = %s\n", record.rdata);
-			// printf("record.length = %d\n", record.rdata_len);
-			// printf("qname size = %d\n", strlen(record.rdata));
-
-
-			// char* answer = malloc(100);
-			// memcpy(answer, record.name, 100);
-			// dns_answer_entry* new_entry = malloc(sizeof(dns_answer_entry));
-			// new_entry->value = answer;
-			// new_entry->next = NULL;
-			// // printf("%p\n", new_entry);
-			// dns_answer_entry* parent_entry = head;
-
-			// while(parent_entry->next != NULL){
-			// 	parent_entry = parent_entry->next;
-			// }
-
-			// parent_entry->next = new_entry;	
+			
 		}
 		else {
 			printf("ERROR: TYPE OR NAME NOT CORRECT!\n");

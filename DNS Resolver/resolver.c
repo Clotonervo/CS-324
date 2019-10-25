@@ -181,6 +181,7 @@ char *name_ascii_from_wire(unsigned char *wire, int *indexp) {
 	unsigned char c = wire[*indexp];
 	char* name = malloc(500);
 	int name_index = 0;
+
 	// printf("initial index = %d\n", *indexp);
 
 	while(c != 0){
@@ -265,7 +266,6 @@ dns_rr rr_from_wire(unsigned char *wire, int *indexp, int query_only) {
 	}
 		//  printf("beginning length = %d\n", length);
 
-
 	// printf("Before big if \n");
 	if (type == 5){
 		// printf("beginning index = %d\n", beginning_index + 11);
@@ -307,10 +307,6 @@ dns_rr rr_from_wire(unsigned char *wire, int *indexp, int query_only) {
 				int jump = c + 1;
 				temp += jump;
 				pointer_index = (unsigned char) temp;
-				
-				// printf("jump = %d\n", jump);
-				// printf("temp = %d\n", temp);
-
 
 				true_length += (int) c;
 				c = wire[temp];
@@ -349,26 +345,6 @@ int rr_to_wire(dns_rr rr, unsigned char *wire, int query_only) {
 	 */
 }
 
-
-void make_header(unsigned char* header)
-{
-	unsigned short query_id = random();
-	header[0] = (char)(query_id & 0xff);
-	header[1] = (char)((query_id & 0xff00) >> 2);
-	header[2] = 0x01;
-	header[3] = 0x00;
-	header[4] = 0x00;
-	header[5] = 0x01;
-	header[6] = 0x00;
-	header[7] = 0x00;
-	header[8] = 0x00;
-	header[9] = 0x00;
-	header[10] = 0x00;
-	header[11] = 0x00;
-
-	return;
-}
-
 unsigned short create_dns_query(char *qname, dns_rr_type qtype, unsigned char *wire) {
 	/* 
 	 * Create a wire-formatted DNS (query) message using the provided byte
@@ -385,9 +361,19 @@ unsigned short create_dns_query(char *qname, dns_rr_type qtype, unsigned char *w
 	unsigned char header[12] = {0};
 	unsigned char query[100] = {0};
 
-
-	make_header(header);
-
+	unsigned short query_id = random();
+	header[0] = (char)(query_id & 0xff);
+	header[1] = (char)((query_id & 0xff00) >> 2);
+	header[2] = 0x01;
+	header[3] = 0x00;
+	header[4] = 0x00;
+	header[5] = 0x01;
+	header[6] = 0x00;
+	header[7] = 0x00;
+	header[8] = 0x00;
+	header[9] = 0x00;
+	header[10] = 0x00;
+	header[11] = 0x00;
 	
 	int query_length = name_ascii_to_wire(qname, query);
 
@@ -502,19 +488,16 @@ dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned ch
 
 		}
 		else if ((strcmp(record.name, qname) == 0) && record.type == 5){
-			// printf("record.type = 5\n");
-			// printf("record.rdata = %s\n", record.rdata);
+
+			// printf("qname = %p\n", qname);
+			// printf("record.name = %p\n", record.name);
 			qname = record.name;
+			memcpy(qname, record.name, record.rdata_len);
 			cname_five = 1;
 			prev_record_length = record.rdata_len;
 			
 		}
-		else {
-			printf("ERROR: TYPE OR NAME NOT CORRECT!\n");
-			free(head);
-			return NULL;
-		}
-					// print_list(head);
+
 		free(record.rdata);
 		free(record.name);
 

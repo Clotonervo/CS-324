@@ -257,7 +257,8 @@ dns_rr rr_from_wire(unsigned char *wire, int *indexp, int query_only) {
 
 	dns_rr_type type = wire[beginning_index + 3];
 	dns_rr_class class = wire[beginning_index + 5];
-	unsigned char* data = malloc(sizeof(unsigned char*) * 100);
+	unsigned char* data = 0;
+	data = calloc(100, sizeof(unsigned char*));
 	dns_rdata_len length = wire[beginning_index + 11];
 	*indexp = beginning_index + 12 + length;
 
@@ -270,7 +271,7 @@ dns_rr rr_from_wire(unsigned char *wire, int *indexp, int query_only) {
 	if (type == 5){
 		// printf("beginning index = %d\n", beginning_index + 11);
 		int true_length, pointer_found = 0;
-		unsigned char pointer_index;
+		unsigned char pointer_index = 0;
 		int index = 0;
 
 		for(int i = 0; i < length; i++){
@@ -292,8 +293,8 @@ dns_rr rr_from_wire(unsigned char *wire, int *indexp, int query_only) {
 		if (pointer_found){
 			true_length = index;
 		}
-
-		unsigned char c = wire[(int)pointer_index];
+		unsigned char c = 0;
+		c = wire[(int)pointer_index];
 			//  printf("pointer_index = %x\n", pointer_index);
 			 int temp = 0;
 
@@ -427,6 +428,7 @@ dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned ch
 	// print_bytes(wire, 114);
 	int cname_five = 0;
 	int prev_record_length = 0;
+	unsigned char current_name[100] = {0};
 
 	if(number_of_answers == 0){
 		return NULL;
@@ -440,12 +442,21 @@ dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned ch
 
 	for(int i = 0; i < number_of_answers; i++){
 		dns_rr record = rr_from_wire(wire, &index, 0);
+		// printf("record.name = %s\n", record.name);
+				// printf("record.name = %p\n", record.name);
+
+
+
 
 			if(cname_five){
 				// printf("qname = %s\n", qname);
+				qname = record.name;
 				dns_answer_entry* cname_entry = malloc(sizeof(dns_answer_entry));
-				char* answer = malloc(100);
+				char* answer = 0;
+				answer = (char*) calloc(100, sizeof(char));
 				memcpy(answer, qname, prev_record_length + 1);
+				memcpy(current_name, qname, prev_record_length + 1);
+				qname = current_name;
 				// printf("answer = %s\n", record.name);
 				cname_entry->value = answer;
 				cname_entry->next = NULL;
@@ -457,49 +468,54 @@ dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned ch
 				}
 
 				parent->next = cname_entry;
-
 				cname_five = 0;
 			}
-
-		if((strcmp(record.name, qname) == 0) && record.type == 1){
-			// printf("record.type = 1\n");
-			// printf("cname_five = %d\n", cname_five);
-
-			int ip_numbers[100] = {0};
-			for(int j = 0; j < record.rdata_len; j++){
-				int ip = (int) record.rdata[j];
-				ip_numbers[j] = ip;
-			}
-			char* answer = malloc(100);
-			sprintf(answer, "%i.%i.%i.%i", ip_numbers[0], ip_numbers[1], ip_numbers[2], ip_numbers[3]);
-			dns_answer_entry* new_entry = malloc(sizeof(dns_answer_entry));
-			new_entry->value = answer;
-			new_entry->next = NULL;
-			// printf("%p\n", new_entry);
-			dns_answer_entry* parent_entry = head;
-
-			while(parent_entry->next != NULL){
-				parent_entry = parent_entry->next;
-			}
-
-			parent_entry->next = new_entry;
-			// print_list(head);
-			// printf("%p\n", head->next);
-
-		}
-		else if ((strcmp(record.name, qname) == 0) && record.type == 5){
-
+			// printf("qname = %s\n", qname);
 			// printf("qname = %p\n", qname);
-			// printf("record.name = %p\n", record.name);
-			qname = record.name;
-			memcpy(qname, record.name, record.rdata_len);
-			cname_five = 1;
-			prev_record_length = record.rdata_len;
-			
+
+
+			// printf("test-------------------------------\n");
+
+		if(strcmp(record.name, qname) == 0) {
+			if (record.type == 1){
+				// printf("record.type = 1\n");
+				// printf("cname_five = %d\n", cname_five);
+
+				int ip_numbers[100] = {0};
+				for(int j = 0; j < record.rdata_len; j++){
+					int ip = (int) record.rdata[j];
+					ip_numbers[j] = ip;
+				}
+				char* answer = malloc(100);
+				sprintf(answer, "%i.%i.%i.%i", ip_numbers[0], ip_numbers[1], ip_numbers[2], ip_numbers[3]);
+				dns_answer_entry* new_entry = malloc(sizeof(dns_answer_entry));
+				new_entry->value = answer;
+				new_entry->next = NULL;
+				// printf("%p\n", new_entry);
+				dns_answer_entry* parent_entry = head;
+
+				while(parent_entry->next != NULL){
+					parent_entry = parent_entry->next;
+				}
+
+				parent_entry->next = new_entry;
+				// print_list(head);
+				// printf("%p\n", head->next);
+			}
+			else if (record.type == 5){
+
+				// printf("qname = %p\n", qname);
+				// printf("record.name = %p\n", record.name);
+				// qname = record.name;
+				// memcpy(qname, record.name, record.rdata_len);
+				cname_five = 1;
+				prev_record_length = record.rdata_len;
+
+			}
 		}
 
-		free(record.rdata);
 		free(record.name);
+		free(record.rdata);
 
 	}
 	dns_answer_entry* ptr_to_return = head->next;

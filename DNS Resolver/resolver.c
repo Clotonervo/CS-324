@@ -259,7 +259,8 @@ dns_rr rr_from_wire(unsigned char *wire, int *indexp, int query_only) {
 	dns_rr_class class = wire[beginning_index + 5];
 	unsigned char* data = 0;
 	data = calloc(100, sizeof(unsigned char*));
-	dns_rdata_len length = wire[beginning_index + 11];
+	dns_rdata_len length = 0;
+	length = wire[beginning_index + 11];
 	*indexp = beginning_index + 12 + length;
 
 	for(int i = 0; i < length; i++){
@@ -443,18 +444,21 @@ dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned ch
 	for(int i = 0; i < number_of_answers; i++){
 		dns_rr record = rr_from_wire(wire, &index, 0);
 		// printf("record.name = %s\n", record.name);
-				// printf("record.name = %p\n", record.name);
+				// printf("length = %p\n", record.rdata_len);
 
 
 
 
 			if(cname_five){
-				// printf("qname = %s\n", qname);
+				// printf("test-------------------------------\n");
+
+				// printf("previous length = %d\n", prev_record_length);
 				qname = record.name;
 				dns_answer_entry* cname_entry = malloc(sizeof(dns_answer_entry));
 				char* answer = 0;
 				answer = (char*) calloc(100, sizeof(char));
 				memcpy(answer, qname, prev_record_length + 1);
+
 				memcpy(current_name, qname, prev_record_length + 1);
 				qname = current_name;
 				// printf("answer = %s\n", record.name);
@@ -474,7 +478,6 @@ dns_answer_entry *get_answer_address(char *qname, dns_rr_type qtype, unsigned ch
 			// printf("qname = %p\n", qname);
 
 
-			// printf("test-------------------------------\n");
 
 		if(strcmp(record.name, qname) == 0) {
 			if (record.type == 1){

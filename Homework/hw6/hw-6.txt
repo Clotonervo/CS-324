@@ -1,0 +1,26 @@
+hw 6
+
+1.	h0pkins3@louisiana:~/Desktop/CS-324/Homework/hw6/hw6$ ps -Lo user,pid,ppid,nlwp,lwp,vsz,rss,state,ucmd -C echoserveri | grep ^h0pkins3\\\|USER
+	USER       PID  PPID NLWP   LWP    VSZ   RSS S CMD
+	h0pkins3 18609 18556    1 18609  10916  2052 S echoserveri
+
+2.	Only one process and one thread are running. The only process running is process 18609, because the server is not connecting concurrently with any of the other ports on nc. The number of threads that are running is 1, with thread ID of 18609.
+
+3. 	Virtual memory used is 10916 bytes and Residential memory used is 2052 bytes. The total number of virtual and residential memory is 12968 bytes.
+
+4.	The other nc process that was second on the list just now connects and issues its commands. The server can only handle one at a time right now and seems to have a queue for what processes will connect to it. 
+
+(Part 2)
+
+5.	h0pkins3@louisiana:~/Desktop/CS-324/Homework/hw6/hw6$ ps -Lo user,pid,ppid,nlwp,lwp,vsz,rss,state,ucmd -C echoserverp | grep ^h0pkins3\\\|USER
+	USER       PID  PPID NLWP   LWP    VSZ   RSS S CMD
+	h0pkins3 19136 18556    1 19136   6712   960 S echoserverp
+	h0pkins3 19138 19136    1 19138   6712   112 S echoserverp
+	h0pkins3 19151 19136    1 19151   6712   112 S echoserverp
+	h0pkins3 19157 19136    1 19157   6712   112 S echoserverp
+
+*6.	It seems that multiple processes are connecting to the echoserverp, and with that multiple thread IDs, all showing down the PID column as well as the LWP column. One thing that is peculiar, however, is there is only 1 thread being run in total on each of these processes. 
+
+7.	Total Virtual memory is 6712 * 4, and total Residential is 112 * 3 + 960. Total is 26848 + 1296 = 28144 bytes
+
+8.	Nothing happens to them, they keep running as usual, connected to the server.

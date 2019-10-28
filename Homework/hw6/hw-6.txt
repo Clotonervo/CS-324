@@ -19,8 +19,86 @@ hw 6
 	h0pkins3 19151 19136    1 19151   6712   112 S echoserverp
 	h0pkins3 19157 19136    1 19157   6712   112 S echoserverp
 
-*6.	It seems that multiple processes are connecting to the echoserverp, and with that multiple thread IDs, all showing down the PID column as well as the LWP column. One thing that is peculiar, however, is there is only 1 thread being run in total on each of these processes. 
+*6.	It seems that multiple processes are connecting to the echoserverp, and with that multiple thread IDs, all showing down the PID column as well as the LWP column. One thing that is peculiar, however, is there is only 1 thread being run in total on each of these processes. This program uses one process to handle each client connection, and only uses one thread.
 
 7.	Total Virtual memory is 6712 * 4, and total Residential is 112 * 3 + 960. Total is 26848 + 1296 = 28144 bytes
 
-8.	Nothing happens to them, they keep running as usual, connected to the server.
+(Part 3)
+
+8. h0pkins3@utah:~/Desktop/CS-324/Homework/hw6$ ps -Lo user,pid,ppid,nlwp,lwp,vsz,rss,state,ucmd -C echoservert | grep ^h0pkins3\\\|USER
+	USER       PID  PPID NLWP   LWP    VSZ   RSS S CMD
+	h0pkins3 22394 22289    4 22394 227908   968 S echoservert
+	h0pkins3 22394 22289    4 22410 227908   968 S echoservert
+	h0pkins3 22394 22289    4 22426 227908   968 S echoservert
+	h0pkins3 22394 22289    4 22442 227908   968 S echoservert
+
+9. This one contrasts #6 because the process IDs are all the same, indicating they are all being treated as the same process, however, they are all simply using mulitple threads, as there are a total of 4 threads being used by the program to run all three netcats at the same time.  Each thread handles a client connection
+
+10. Total Virtual memory = 227908 bytes and total Residential is 968 bytes, so total, there are 228876 bytes being used.
+
+(Part 3)
+
+11. h0pkins3@utah:~/Desktop/CS-324/Homework/hw6$ ps -Lo user,pid,ppid,nlwp,lwp,vsz,rss,state,ucmd -C echoservert_pre | grep ^h0pkins3\\\|USER
+	USER       PID  PPID NLWP   LWP    VSZ   RSS S CMD
+	h0pkins3 22661 22289   11 22661 154208   916 S echoservert_pre
+	h0pkins3 22661 22289   11 22662 154208   916 S echoservert_pre
+	h0pkins3 22661 22289   11 22663 154208   916 S echoservert_pre
+	h0pkins3 22661 22289   11 22664 154208   916 S echoservert_pre
+	h0pkins3 22661 22289   11 22665 154208   916 S echoservert_pre
+	h0pkins3 22661 22289   11 22666 154208   916 S echoservert_pre
+	h0pkins3 22661 22289   11 22667 154208   916 S echoservert_pre
+	h0pkins3 22661 22289   11 22668 154208   916 S echoservert_pre
+	h0pkins3 22661 22289   11 22669 154208   916 S echoservert_pre
+	h0pkins3 22661 22289   11 22670 154208   916 S echoservert_pre
+	h0pkins3 22661 22289   11 22671 154208   916 S echoservert_pre
+
+*12.	This one has some strange behavior, there seem to be quite a few processes with the same process IDs, with 11 threads with different thread IDs.
+
+13. Total Virtual memory = 154208 bytes, total Residential memory is 916 bytes, so total, there are 155124 bytes being used.
+
+*14. echoserverp:
+	
+	Pros: Handles multiple connections concurrently, and does not share address space, and has separate file descriptors.
+	Cons: Additional overhead for process control, its not easy to share data between processes.
+
+*15. echoservert:
+
+	Pros: Easy to share data structures between threads, and are more efficient than processes
+	Cons: Unintentional sharing can introduce subtle race errors.
+
+*16. echoservert_pre:
+
+	Pros: One logical control flow
+	Cons: More complex to code, and can't take advantage of multi-core CPUs.
+
+17.	Lines 32-35 (
+    while (1) { 
+        clientlen = sizeof(struct sockaddr_storage);
+        connfd = Accept(listenfd, (SA *) &clientaddr, &clientlen);
+        sbuf_insert(&sbuf, connfd); /* Insert connfd in buffer */
+    })
+    There are 10 producer threads, in accordance with macro NTHREADS
+
+18.	Lines 42-45 (
+	while (1) { 
+        int connfd = sbuf_remove(&sbuf); /* Remove connfd from buffer */ //line:conc:pre:removeconnfd
+        echo_cnt(connfd);                /* Service client */
+        Close(connfd);
+	})
+	There are 10 consumer threads, in accordance with macro NTHREADS
+
+19.	If the slots member is 0, then the call blocks until either it becomes possible to perform the decrement (i.e., the value rises above zero), or a signal handler interrupts the call.
+
+20. Line 34 will wake up the consumer through the producer, and alert it so that the consumer knows that it can continue.
+
+
+
+
+
+
+
+
+
+
+
+

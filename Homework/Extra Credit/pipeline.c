@@ -1,21 +1,23 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 
 int main(int argc, char** argv)
 {
-    // printf("argv = %s\n", argv[0]);
-    int fd[2];
+    int p[2];
     char* first_pipe[20] = {0};
     char* second_pipe[20] = {0};
-    int second_half, index = 0;
+    int second_half = 0; 
+    int index = 0;
+    int first_size = 0;
+    int second_size = 0;
 
-    for (int i = 0; i < argc; i++){
-        // printf("%s ", argv[i]);
-
+    for (int i = 1; i < argc; i++){
         if (strcmp(argv[i], "PIPE") == 0){
             second_half = 1;
+            first_size = i - 1;
             i++;
         }
 
@@ -23,51 +25,44 @@ int main(int argc, char** argv)
             second_pipe[index] = argv[i];
             second_pipe[i+1] = 0;
             index++;
+            second_size++;
         }
         else {
-            first_pipe[i] = argv[i];
-            first_pipe[i+1] = 0;
+            first_pipe[i-1] = argv[i];
+            first_pipe[i] = 0;
         }
     }
-    // printf("\n argv = %s\n", argv[0]);
-    // printf("first pipe = %s\n", first_pipe[1]);
-    // printf("second pipe = %s\n", second_pipe[0]);
 
-    if(pipe(fd) == -1) {
-        // perror("Pipe failed");
-        exit(1);
-    }
+    // for(int i = 0; i < first_size; i++){
+    //     printf("first_pipe = %s\n", first_pipe[i]);
+    // }
 
-    if(fork() == 0)            //first fork
+    // for(int i = 0; i < second_size; i++){
+    //     printf("second_pipe = %s\n", second_pipe[i]);
+    // }
+
+    pipe(p);
+    char *newenviron[] = { NULL };
+
+    if(fork() == 0)           
     {
-        close(STDOUT_FILENO);  //closing stdout
-        dup(fd[1]);         //replacing stdout with pipe write 
-        close(fd[0]);       //closing pipe read
-        close(fd[1]);
-
-        // const char* prog1[] = { "ls", "-l", 0};
-        // char* prog1 = first_pipe;
-        execvp(first_pipe[0], first_pipe);
-        // perror("execvp of ls failed");
+        dup2(p[1], 1);         //replacing stdout with pipe write 
+        close(p[0]);       //closing pipe read
+        execve(first_pipe[0], first_pipe, newenviron);
         exit(1);
     }
 
-    if(fork() == 0)            //creating 2nd child
-    {
-        close(STDIN_FILENO);   //closing stdin
-        dup(fd[0]);         //replacing stdin with pipe read
-        close(fd[1]);       //closing pipe write
-        close(fd[0]);
+    if(fork() == 0)            
+    {     
+        dup2(p[0], 0);       //replacing stdin with pipe read
+        close(p[1]);        //closing pipe write
 
-        // const char* prog2[] = { "wc", "-l", 0};
-        // const char* prog2 = second_pipe;
-        execvp(second_pipe[0], second_pipe);
-        // perror("execvp of second pipe failed");
+        execve(second_pipe[0], second_pipe, newenviron);
         exit(1);
     }
 
-    close(fd[0]);
-    close(fd[1]);
+    close(p[0]);
+    close(p[1]);
     wait(0);
     wait(0);
     return 0;

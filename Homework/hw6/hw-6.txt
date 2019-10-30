@@ -56,15 +56,15 @@ hw 6
 
 13. Total Virtual memory = 154208 bytes, total Residential memory is 916 bytes, so total, there are 155124 bytes being used.
 
-*14. echoserverp:
+14. echoserverp: Process based
 	
-	Pros: Handles multiple connections concurrently, and does not share address space, and has separate file descriptors.
-	Cons: Additional overhead for process control, its not easy to share data between processes.
+	Pros: Handles multiple connections concurrently, and is very simple.
+	Cons: Additional overhead for process control, its nontrivial to share data between processes.
 
-*15. echoservert:
+15. echoservert: Thread based
 
 	Pros: Easy to share data structures between threads, and are more efficient than processes
-	Cons: Unintentional sharing can introduce subtle race errors.
+	Cons: Unintentional sharing can introduce subtle and hard-to-reproduce errors.
 
 *16. echoservert_pre:
 
@@ -87,7 +87,7 @@ hw 6
 	})
 	There are 10 consumer threads, in accordance with macro NTHREADS
 
-19.	If the slots member is 0, then the call blocks until either it becomes possible to perform the decrement (i.e., the value rises above zero), or a signal handler interrupts the call.
+19.	If the slots member is 0, then suspend thread until slots becomes nonzero and the tread is restarted by a V operation.
 
 20. Line 34 will wake up the consumer through the producer, and alert it so that the consumer knows that it can continue.
 

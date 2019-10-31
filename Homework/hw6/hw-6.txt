@@ -19,7 +19,7 @@ hw 6
 	h0pkins3 19151 19136    1 19151   6712   112 S echoserverp
 	h0pkins3 19157 19136    1 19157   6712   112 S echoserverp
 
-*6.	It seems that multiple processes are connecting to the echoserverp, and with that multiple thread IDs, all showing down the PID column as well as the LWP column. One thing that is peculiar, however, is there is only 1 thread being run in total on each of these processes. This program uses one process to handle each client connection, and only uses one thread.
+6.	It seems that multiple processes are connecting to the echoserverp, and with that multiple thread IDs, all showing down the PID column as well as the LWP column. This program uses one process to handle each client connection. Each process uses one thread, so in this case there are 3 separate connections, each with a process, with the parent being the server.
 
 7.	Total Virtual memory is 6712 * 4, and total Residential is 112 * 3 + 960. Total is 26848 + 1296 = 28144 bytes
 
@@ -32,7 +32,7 @@ hw 6
 	h0pkins3 22394 22289    4 22426 227908   968 S echoservert
 	h0pkins3 22394 22289    4 22442 227908   968 S echoservert
 
-9. This one contrasts #6 because the process IDs are all the same, indicating they are all being treated as the same process, however, they are all simply using mulitple threads, as there are a total of 4 threads being used by the program to run all three netcats at the same time.  Each thread handles a client connection
+9. This one contrasts #6 because the process IDs are all the same, indicating they are all being treated as the same process, however, they are all using a different thread, as there are a total of 4 threads being used by the program to run all three netcats and the server at the same time.  Each thread handles a client connection
 
 10. Total Virtual memory = 227908 bytes and total Residential is 968 bytes, so total, there are 228876 bytes being used.
 
@@ -52,7 +52,7 @@ hw 6
 	h0pkins3 22661 22289   11 22670 154208   916 S echoservert_pre
 	h0pkins3 22661 22289   11 22671 154208   916 S echoservert_pre
 
-*12.	This one has some strange behavior, there seem to be quite a few processes with the same process IDs, with 11 threads with different thread IDs.
+12.	This one has some strange behavior, there seem to be quite a few processes with the same process IDs, with 11 threads with different thread IDs. It seems that the program generates up to 10 threads (11 if the program that creates them is counted), and that those threads are used to handle the connections.
 
 13. Total Virtual memory = 154208 bytes, total Residential memory is 916 bytes, so total, there are 155124 bytes being used.
 
@@ -66,28 +66,16 @@ hw 6
 	Pros: Easy to share data structures between threads, and are more efficient than processes
 	Cons: Unintentional sharing can introduce subtle and hard-to-reproduce errors.
 
-*16. echoservert_pre:
+16. echoservert_pre:
 
 	Pros: One logical control flow
 	Cons: More complex to code, and can't take advantage of multi-core CPUs.
 
-17.	Lines 32-35 (
-    while (1) { 
-        clientlen = sizeof(struct sockaddr_storage);
-        connfd = Accept(listenfd, (SA *) &clientaddr, &clientlen);
-        sbuf_insert(&sbuf, connfd); /* Insert connfd in buffer */
-    })
-    There are 10 producer threads, in accordance with macro NTHREADS
+17.	Line 35 { sbuf_insert(&sbuf, connfd); }, there is only 1 producer thread and thats the parent that creates all the threads.
 
-18.	Lines 42-45 (
-	while (1) { 
-        int connfd = sbuf_remove(&sbuf); /* Remove connfd from buffer */ //line:conc:pre:removeconnfd
-        echo_cnt(connfd);                /* Service client */
-        Close(connfd);
-	})
-	There are 10 consumer threads, in accordance with macro NTHREADS
+18.	Line 43 { int connfd = sbuf_remove(&sbuf); }, there are 10 consumer threads, in accordance with the number of threads created by the program.
 
-19.	If the slots member is 0, then suspend thread until slots becomes nonzero and the tread is restarted by a V operation.
+19.	If the slots member is 0, then suspend thread until slots becomes nonzero and the thread is restarted by a V operation.
 
 20. Line 34 will wake up the consumer through the producer, and alert it so that the consumer knows that it can continue.
 

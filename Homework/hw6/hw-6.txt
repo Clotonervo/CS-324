@@ -19,7 +19,7 @@ hw 6
 	h0pkins3 19151 19136    1 19151   6712   112 S echoserverp
 	h0pkins3 19157 19136    1 19157   6712   112 S echoserverp
 
-6.	It seems that multiple processes are connecting to the echoserverp, and with that multiple thread IDs, all showing down the PID column as well as the LWP column. This program uses one process to handle each client connection. Each process uses one thread, so in this case there are 3 separate connections, each with a process, with the parent being the server.
+6.	It seems that multiple processes are connecting to the echoserverp, all showing down the PID column as well as the LWP column. This program uses one process to handle each client connection. Each process uses one thread, so in this case there are 3 separate connections, each with a process, with the parent being the server.
 
 7.	Total Virtual memory is 6712 * 4, and total Residential is 112 * 3 + 960. Total is 26848 + 1296 = 28144 bytes
 

@@ -53,19 +53,23 @@ void parse_host_and_port(char* request, char* host, char* port)
 int parse_request(char* request, char* type, char* protocol, char* host, char* port, char* resource, char* version){
 	char url[MAXBUF];
 	
-	if((!strstr(request, "/")) || !strlen(request))
+	if((!strstr(request, "/")) || strlen(request) == 0) {
 		return -1;
+    }
 
     parse_host_and_port(request, host, port);
 	
-	strcpy(resource, "/");
 	sscanf(request,"%s %s %s", type, url, version);
 	
-	if (strstr(url, "://")) 
+	if (strstr(url, "://")) {
+    	strcpy(resource, "/");
 		sscanf(url, "%[^:]://%*[^/]%s", protocol, resource);
-	else
+    }
+	else {
+    	strcpy(resource, "/");
 		sscanf(url, "[^/]%s", resource);
-		
+    }
+
 	return 0;
 }
 

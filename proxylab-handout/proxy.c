@@ -22,27 +22,55 @@ void echo(int connfd);
 int sfd;
 struct sockaddr_in ip4addr;
 
+void parse_host(char* request, char* host)
+{
+    char request_cpy[MAXBUF] = {0};
+    strcpy(request_cpy, request);
+    char *temp = strstr(request_cpy,":");
+	strcpy(host, (temp + 2));
+    char* p = strchr(host,':');
+    *p = '\0';
+    printf("host = %s\n", host);
+}
+
+void parse_port(char* request, char* port)
+{
+    char request_cpy[MAXBUF] = {0};
+    strcpy(request_cpy, request);
+    char *temp = strstr(request_cpy,":");
+    temp = strstr((temp + 2), ":");
+	strcpy(port, (temp + 1));
+    char* p = strchr(port,'\n');
+    *p = '\0';
+    printf("port = %s\n", port);
+}
+
 int parse_request(char* request, int fd, char* host, char* port, char* resource)
 {
+    parse_host(request, host);
+    parse_port(request, port);
     return 0;
 }
 
-int read_bytes(int fd)
+char* read_bytes(int fd, char* p)
 {
-    char buf[MAXBUF];
+    printf("in read_bytes");
+    sleep(1);
+    int total_read = 0;
     ssize_t nread = 0;
     for (;;) {
-		socklen_t peer_addr_len = sizeof(struct sockaddr_storage);
-		nread = recv(fd, buf, MAXBUF, 0);
+		nread = recv(fd, (p + total_read), MAXBUF, 0);
+        total_read += nread;
+        printf(" %d ", nread);
 
 		if (nread == -1)
-			continue;               /* Ignore failed request */
+			continue;              
 
         if (nread == 0)
             break;
 
 	}
-    printf("Received:%s", buf);
+    // printf("Received:%s", p);
 }
 
 void *thread(void *vargp) 
@@ -55,9 +83,10 @@ void *thread(void *vargp)
     char resource[MAXBUF];
     int req_val = 0;
     printf("in thread function\n");
+    read_bytes(connfd,request);
+    printf("%s\n", request);
 
     req_val = parse_request(request, connfd, host, port, resource);
-    read_bytes(connfd);
 
     Free(vargp);                    
     // echo(connfd);
@@ -95,11 +124,8 @@ void make_client(int port)
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
     pthread_t tid; 
-        printf("making client socket");
 
     listenfd = make_listening_socket(port);
-    printf("made client socket and am currently listening");
-
     while (1) {
         clientlen = sizeof(struct sockaddr_storage);
         connfdp = Malloc(sizeof(int)); 
@@ -107,7 +133,6 @@ void make_client(int port)
         Pthread_create(&tid, NULL, thread, connfdp);
     }
 }
-
 
 int main(int argc, char *argv[])
 {

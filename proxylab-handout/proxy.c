@@ -22,46 +22,63 @@ void echo(int connfd);
 int sfd;
 struct sockaddr_in ip4addr;
 
-void parse_host(char* request, char* host)
+void parse_host_and_port(char* request, char* host, char* port)
 {
     char request_cpy[MAXBUF] = {0};
     strcpy(request_cpy, request);
-    char *temp = strstr(request_cpy,":");
-	strcpy(host, (temp + 2));
-    char* p = strchr(host,':');
-    *p = '\0';
-    printf("host = %s\n", host);
+    char *temp = strstr(request_cpy,"Host:");
+    if (temp){
+        temp = temp + 6;
+        strcpy(host, temp);
+
+        char* p = strchr(host,':');
+        char* n = strchr(host, '\n');
+        if (p < n){
+            *p = '\0';
+            char* temp_p = p + 1;
+            p = strchr(temp_p,'\n');
+            *p = '\0';
+            strcpy(port, temp_p);
+        }
+        else {
+            strcpy(port, "80");
+            *n = '\0';
+        }
+    }
+    else {
+        return;
+    }
 }
 
-void parse_port(char* request, char* port)
-{
-    char request_cpy[MAXBUF] = {0};
-    strcpy(request_cpy, request);
-    char *temp = strstr(request_cpy,":");
-    temp = strstr((temp + 2), ":");
-	strcpy(port, (temp + 1));
-    char* p = strchr(port,'\n');
-    *p = '\0';
-    printf("port = %s\n", port);
-}
+int parse_request(char* request, char* type, char* protocol, char* host, char* port, char* resource, char* version){
+	char url[MAXBUF];
+	
+	if((!strstr(request, "/")) || !strlen(request))
+		return -1;
 
-int parse_request(char* request, int fd, char* host, char* port, char* resource)
-{
-    parse_host(request, host);
-    parse_port(request, port);
-    return 0;
+    parse_host_and_port(request, host, port);
+	
+	strcpy(resource, "/");
+	sscanf(request,"%s %s %s", type, url, version);
+	
+	if (strstr(url, "://")) 
+		sscanf(url, "%[^:]://%*[^/]%s", protocol, resource);
+	else
+		sscanf(url, "[^/]%s", resource);
+		
+	return 0;
 }
 
 char* read_bytes(int fd, char* p)
 {
-    printf("in read_bytes");
+    // printf("in read_bytes");
     sleep(1);
     int total_read = 0;
     ssize_t nread = 0;
     for (;;) {
 		nread = recv(fd, (p + total_read), MAXBUF, 0);
         total_read += nread;
-        printf(" %d ", nread);
+        // printf(" %d ", nread);
 
 		if (nread == -1)
 			continue;              
@@ -78,15 +95,33 @@ void *thread(void *vargp)
     int connfd = *((int *)vargp);
     Pthread_detach(pthread_self()); 
     char request[MAXBUF];
+    char type[MAXBUF];
     char host[MAXBUF];
     char port[MAXBUF];
     char resource[MAXBUF];
+    char protocal[MAXBUF];
+    char version[MAXBUF];
+
     int req_val = 0;
     printf("in thread function\n");
     read_bytes(connfd,request);
-    printf("%s\n", request);
+    // printf("%s\n", request);
 
-    req_val = parse_request(request, connfd, host, port, resource);
+    req_val = parse_request(request, type, protocal, host, port, resource, version);
+    printf("request = %s\n", request);
+    printf("type = %s\n", type);
+    printf("protocal = %s\n", protocal);
+    printf("host = %s\n", host);
+    printf("port = %s\n", port);
+    printf("resource = %s\n", resource);
+    printf("version = %s\n", version);
+
+    if (req_val == 0){
+
+    }
+    else {
+        // simply close connection and move on
+    }
 
     Free(vargp);                    
     // echo(connfd);

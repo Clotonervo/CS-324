@@ -14,8 +14,11 @@
 
 /* You won't lose style points for including this long line in your code */
 static const char *user_agent_hdr = "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:10.0.3) Gecko/20120305 Firefox/10.0.3\r\n";
-static const char *connection_hdr = "Connection: close";
-static const char *proxy_connection_hdr = "Proxy-Connection: close";
+static const char *connection_hdr = "Connection: close\r\n";
+static const char *proxy_connection_hdr = "Proxy-Connection: close\r\n";
+static const char *host_init = "Host: ";
+static const char *accept_line_hdr = "Accept */* \r\n";
+static const char *end_line = "\r\n";
 void echo(int connfd);
 
 
@@ -36,7 +39,7 @@ void parse_host_and_port(char* request, char* host, char* port)
         if (p < n){
             *p = '\0';
             char* temp_p = p + 1;
-            p = strchr(temp_p,'\n');
+            p = strchr(temp_p,'\r');
             *p = '\0';
             strcpy(port, temp_p);
         }
@@ -112,16 +115,35 @@ void *thread(void *vargp)
     // printf("%s\n", request);
 
     req_val = parse_request(request, type, protocal, host, port, resource, version);
-    printf("request = %s\n", request);
-    printf("type = %s\n", type);
-    printf("protocal = %s\n", protocal);
-    printf("host = %s\n", host);
-    printf("port = %s\n", port);
-    printf("resource = %s\n", resource);
-    printf("version = %s\n", version);
+    // printf("request = %s\n", request);
+    // printf("type = %s\n", type);
+    // printf("protocal = %s\n", protocal);
+    // printf("host = %s\n", host);
+    // printf("port = %s\n", port);
+    // printf("resource = %s\n", resource);
+    // printf("version = %s\n", version);
 
     if (req_val == 0){
-
+        char new_request[MAXBUF] = {0};
+        char* p = new_request;
+        strcat(new_request, type);
+        strcat(new_request, " http://");
+        strcat(new_request, host);
+        strcat(new_request, ":");
+        strcat(new_request, port);
+        strcat(new_request, resource);
+        strcat(new_request, " HTTP/1.0");
+        strcat(new_request, end_line);
+        strcat(new_request, host_init);
+        strcat(new_request, host);
+        strcat(new_request, ":");
+        strcat(new_request, port);
+        strcat(new_request, end_line);
+        strcat(new_request, user_agent_hdr);
+        strcat(new_request, accept_line_hdr);
+        strcat(new_request, connection_hdr);
+        strcat(new_request, proxy_connection_hdr);
+        printf("new_request: \n\n%s\n", p);
     }
     else {
         // simply close connection and move on

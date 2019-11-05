@@ -19,6 +19,10 @@ static const char *proxy_connection_hdr = "Proxy-Connection: close\r\n";
 static const char *host_init = "Host: ";
 static const char *accept_line_hdr = "Accept */* \r\n";
 static const char *end_line = "\r\n";
+static const char *default_port = "80";
+static const char *version_hdr = " HTTP/1.0";
+static const char *http_hdr = " http://";
+static const char *colon = ":";
 void echo(int connfd);
 
 
@@ -29,23 +33,27 @@ void parse_host_and_port(char* request, char* host, char* port)
 {
     char request_cpy[MAXBUF] = {0};
     strcpy(request_cpy, request);
+
     char *temp = strstr(request_cpy,"Host:");
     if (temp){
         temp = temp + 6;
-        strcpy(host, temp);
 
-        char* p = strchr(host,':');
-        char* n = strchr(host, '\n');
+        char* p = strchr(temp,':');
+        char* n = strchr(temp, '\r');
+
         if (p < n){
             *p = '\0';
+            strcpy(host, temp);
             char* temp_p = p + 1;
             p = strchr(temp_p,'\r');
             *p = '\0';
             strcpy(port, temp_p);
         }
         else {
-            strcpy(port, "80");
+            memcpy(port, default_port, strlen(default_port));
             *n = '\0';
+            strcpy(host, temp);
+
         }
     }
     else {
@@ -61,12 +69,17 @@ int parse_request(char* request, char* type, char* protocol, char* host, char* p
     }
 
     parse_host_and_port(request, host, port);
-	
 	sscanf(request,"%s %s %s", type, url, version);
+
+    char* test = strstr(url, "://");
 	
-	if (strstr(url, "://")) {
+	if (test) {
     	strcpy(resource, "/");
 		sscanf(url, "%[^:]://%*[^/]%s", protocol, resource);
+        if(!strcmp(resource, "/\0")){
+            resource = "/\0";
+        }
+
     }
 	else {
     	strcpy(resource, "/");
@@ -76,38 +89,137 @@ int parse_request(char* request, char* type, char* protocol, char* host, char* p
 	return 0;
 }
 
-char* read_bytes(int fd, char* p)
+int read_bytes(int fd, char* p)
 {
     // printf("in read_bytes");
-    sleep(1);
+            printf(" p = %p\n", p);
     int total_read = 0;
     ssize_t nread = 0;
-    for (;;) {
+    while(1) {
 		nread = recv(fd, (p + total_read), MAXBUF, 0);
         total_read += nread;
-        // printf(" %d ", nread);
+        printf("got here \n");
+        printf("total_read = %d\n", total_read);
+        printf("nread = %d\n", nread);
+        sleep(1);
+         printf(" p = %p\n ", p);
 
-		if (nread == -1)
-			continue;              
+		if (nread == -1) {
+			continue;     
+        }         
 
-        if (nread == 0)
+        if (nread == 0){
             break;
-
+        }
+        // if(strcmp(p[total_read - 3], "\r\n")){
+        //     break;
+        // }
 	}
-    // printf("Received:%s", p);
+        printf("Received:%zd\n", total_read);
+
+    return total_read;
 }
+
+int create_send_socket(int sfd, char* port, char* host)
+{
+        /* Obtain address(es) matching host/port */
+    struct addrinfo hints;
+    struct addrinfo *result, *rp;
+    int s;
+    char buffer[MAXBUF];
+
+
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+    hints.ai_socktype = SOCK_STREAM; /* TCP socket */
+    hints.ai_flags = 0;
+    hints.ai_protocol = 0;          /* Any protocol */
+    s = getaddrinfo(host, port, &hints, &result);
+    if (s != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        exit(EXIT_FAILURE);
+    }
+    /* getaddrinfo() returns a list of address structures.
+    Try each address until we successfully connect(2).
+    If socket(2) (or connect(2)) fails, we (close the socket
+    and) try the next address. */
+    
+    for (rp = result; rp != NULL; rp = rp->ai_next) {
+        sfd = socket(rp->ai_family, rp->ai_socktype,
+                    rp->ai_protocol);
+        if (sfd == -1)
+    continue;
+        if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1)
+            break;                  /* Success */
+        close(sfd);
+    }
+    if (rp == NULL) {               /* No address succeeded */
+        fprintf(stderr, "Could not connect\n");
+    }
+    freeaddrinfo(result);           /* No longer needed */
+
+
+
+}
+
+void send_request(int sfd, char* request, int length)
+{
+    ssize_t nread;
+
+    while (length > 0)
+    {
+        nread = write(sfd, request, length);
+        if (nread <= 0)
+            break;
+        request += nread;
+        length -= nread;
+    }
+}
+
+// void make_host_and_port (char* host_and_port, char* host, char* port)
+// {
+//     int length = strlen(host) + strlen(port) + strlen(host_init);
+    
+//     for (int i = 0; i <strlen(host_init); i++){
+//         host_and_port[i] = host_init[i];
+//     }
+//         printf("host_and_port = %s\n", host_and_port);
+
+//     for (int i = 0; i < strlen(host); i++){
+//         host_and_port[i + strlen(host_init)] = host[i];
+//     }
+//         printf("host_and_port = %s\n", host_and_port);
+//         printf("length = %d\n", length);
+//                 printf("size = %d\n", sizeof(host_and_port));
+
+
+//     for (int i = 0; i < strlen(port); i++){
+//         printf("i = %d\n",i + strlen(host) + strlen(host_init));
+//         printf("host_and_port[i] = %p\n", host_and_port[i + strlen(host) + strlen(host_init)]);
+//         printf("port[i] = %p\n", port[i]);
+//         host_and_port[i + strlen(host) + strlen(host_init)] = port[i];
+//                 printf("host_and_port[i] = %p\n", host_and_port[i + strlen(host) + strlen(host_init)]);
+//                 printf("host_and_port[i] = %p\n", i);
+
+//     }
+//     host_and_port[length] = '\0';
+//     sleep(1);
+//     printf("host_and_port is now = %s\n", host_and_port);
+// }
 
 void *thread(void *vargp) 
 {  
     int connfd = *((int *)vargp);
     Pthread_detach(pthread_self()); 
-    char request[MAXBUF];
-    char type[MAXBUF];
-    char host[MAXBUF];
-    char port[MAXBUF];
-    char resource[MAXBUF];
-    char protocal[MAXBUF];
-    char version[MAXBUF];
+    char request[MAXBUF] = {0};
+    char type[BUFSIZ] = {0};
+    char host[BUFSIZ];
+    char port[BUFSIZ];
+    char resource[BUFSIZ] = {0};
+    char protocal[BUFSIZ] = {0};
+    char version[BUFSIZ] = {0};
+    char host_and_port[MAXBUF] = {0};
+    int sfd = 0;
 
     int req_val = 0;
     printf("in thread function\n");
@@ -115,35 +227,58 @@ void *thread(void *vargp)
     // printf("%s\n", request);
 
     req_val = parse_request(request, type, protocal, host, port, resource, version);
-    // printf("request = %s\n", request);
-    // printf("type = %s\n", type);
-    // printf("protocal = %s\n", protocal);
-    // printf("host = %s\n", host);
-    // printf("port = %s\n", port);
-    // printf("resource = %s\n", resource);
-    // printf("version = %s\n", version);
+    printf("request = %s\n", request);
+    printf("type = %s\n", type);
+    printf("protocal = %s\n", protocal);
+    printf("host = %s\n", host);
+    printf("port = %s\n", port);
+    printf("resource = %s\n", resource);
+    printf("version = %s\n\n", version);
+
+    // make_host_and_port(host_and_port, host, port);
+    char* port_pointer = port;
+
+    // printf("host_and_port is now = %s\n", host_and_port);
+
+
 
     if (req_val == 0){
         char new_request[MAXBUF] = {0};
         char* p = new_request;
-        strcat(new_request, type);
-        strcat(new_request, " http://");
-        strcat(new_request, host);
-        strcat(new_request, ":");
-        strcat(new_request, port);
-        strcat(new_request, resource);
-        strcat(new_request, " HTTP/1.0");
-        strcat(new_request, end_line);
-        strcat(new_request, host_init);
-        strcat(new_request, host);
-        strcat(new_request, ":");
-        strcat(new_request, port);
-        strcat(new_request, end_line);
-        strcat(new_request, user_agent_hdr);
-        strcat(new_request, accept_line_hdr);
-        strcat(new_request, connection_hdr);
-        strcat(new_request, proxy_connection_hdr);
+        // snprintf(new_request, MAXBUF, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+        // type, " ", resource, version_hdr, end_line, host_init, host, colon, port, end_line,
+        // user_agent_hdr, accept_line_hdr, connection_hdr, proxy_connection_hdr, end_line);
+
+        strncat(new_request, type, BUFSIZ);
+        strncat(new_request, " ", 2);
+        strncat(new_request, resource, BUFSIZ);
+        strncat(new_request, version_hdr, BUFSIZ);
+        strncat(new_request, end_line,BUFSIZ);
+        strncat(new_request, host_init, BUFSIZ);
+        strncat(new_request, host, BUFSIZ);
+        if (strcmp(port, "80")){
+            strncat(new_request, colon, BUFSIZ);
+            strncat(new_request, port, BUFSIZ);
+        }
+        else {
+            strncat(new_request, ":", 2);
+            strncat(new_request, "80", 4);
+        }
+        strncat(new_request, end_line, BUFSIZ);
+        strncat(new_request, user_agent_hdr, BUFSIZ);
+        strncat(new_request, accept_line_hdr, BUFSIZ);
+        strncat(new_request, connection_hdr, BUFSIZ);
+        strncat(new_request, proxy_connection_hdr, BUFSIZ);
+        strncat(new_request, end_line, BUFSIZ);
         printf("new_request: \n\n%s\n", p);
+        int request_length = 0;
+        request_length = strlen(new_request);
+
+        // printf("request length = %d\n", request_length);
+        // printf("request length = %d\n", strlen(request));
+
+        create_send_socket(sfd, port, host);
+        send_request(sfd, new_request, request_length);
     }
     else {
         // simply close connection and move on
@@ -190,7 +325,10 @@ void make_client(int port)
     while (1) {
         clientlen = sizeof(struct sockaddr_storage);
         connfdp = Malloc(sizeof(int)); 
-        *connfdp = Accept(listenfd, (SA *) &clientaddr, &clientlen); 
+        if ((*connfdp = accept(listenfd, (SA *) &clientaddr, &clientlen)) < 0){
+            perror("Error with accepting connection!\n");
+            break;
+        }
         Pthread_create(&tid, NULL, thread, connfdp);
     }
 }

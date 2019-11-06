@@ -118,7 +118,7 @@ int read_bytes(int fd, char* p)
     while(1) {
 		nread = recv(fd, (p + total_read), MAXBUF, 0);
         total_read += nread;
-        strcpy(temp_buf, p + nread - 4);
+        strcpy(temp_buf, p + total_read - 4);
         // printf("nread = %d\n", nread);
 		if (nread == -1) {
             fprintf(stdout, "Error opening file: %s\n", strerror( errno ));

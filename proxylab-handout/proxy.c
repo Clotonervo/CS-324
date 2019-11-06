@@ -136,23 +136,21 @@ int read_bytes(int fd, char* p)
             break;
         }
 
-
-        // if(strcmp(p[total_read - 3], "\r\n")){
-        //     break;
-        // }
 	}
         // printf("Received:%zd\n", total_read);
 
     return total_read;
 }
 
-int create_send_socket(int sfd, char* port, char* host, char* request, char* length, char* p)
+int create_send_socket(int sfd, char* port, char* host, char* request, int length, char* p)
 {
         /* Obtain address(es) matching host/port */
+    printf("length = %d\n");
     struct addrinfo hints;
     struct addrinfo *result, *rp;
     int s;
     char buffer[MAXBUF];
+    printf("length = %d\n");
 
 
     memset(&hints, 0, sizeof(struct addrinfo));
@@ -165,11 +163,7 @@ int create_send_socket(int sfd, char* port, char* host, char* request, char* len
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
         exit(EXIT_FAILURE);
     }
-    /* getaddrinfo() returns a list of address structures.
-    Try each address until we successfully connect(2).
-    If socket(2) (or connect(2)) fails, we (close the socket
-    and) try the next address. */
-    
+
     for (rp = result; rp != NULL; rp = rp->ai_next) {
         sfd = socket(rp->ai_family, rp->ai_socktype,
                     rp->ai_protocol);
@@ -185,8 +179,10 @@ int create_send_socket(int sfd, char* port, char* host, char* request, char* len
     freeaddrinfo(result);           /* No longer needed */
 
     ssize_t nread;
-    // printf("in send_request \n");
-
+    printf("in send_request \n");
+    printf("length = %d\n");
+    
+    sleep(1);
     while (length > 0)
     {
         nread = write(sfd, request, length);
@@ -196,7 +192,8 @@ int create_send_socket(int sfd, char* port, char* host, char* request, char* len
         length -= nread;
     }
 
-        // printf("in read_bytes");
+        printf("in read_bytes");
+        sleep(1);
     int total_read = 0;
     nread = 0;
     char temp_buf[MAXBUF] = {0};
@@ -214,6 +211,8 @@ int create_send_socket(int sfd, char* port, char* host, char* request, char* len
             break;
         }
     }
+    printf("returning\n");
+    sleep(1);
     return total_read;
 }
 
@@ -249,6 +248,20 @@ void send_request(int sfd, char* request, int length)
     // printf("nread = %d\n", nread);
 }
 
+int get_length(char* request)
+{
+    char* p = request;
+    int length = 0;
+    while(1){
+        if (!strcmp(p, "\r\n\r\n")){
+            length + 4;
+            break;
+        }
+        length += 1;
+        p += 1;
+    }
+}
+
 void *thread(void *vargp) 
 {  
     int connfd = *((int *)vargp);
@@ -264,18 +277,18 @@ void *thread(void *vargp)
     int sfd = 0;
 
     int req_val = 0;
-    // printf("in thread function\n");
+    printf("in thread function\n");
     read_bytes(connfd,request);
     // printf("%s\n", request);
 
     req_val = parse_request(request, type, protocal, host, port, resource, version);
-    // printf("request = %s\n", request);
-    // printf("type = %s\n", type);
-    // printf("protocal = %s\n", protocal);
-    // printf("host = %s\n", host);
-    // printf("port = %s\n", port);
-    // printf("resource = %s\n", resource);
-    // printf("version = %s\n\n", version);
+    printf("request = %s\n", request);
+    printf("type = %s\n", type);
+    printf("protocal = %s\n", protocal);
+    printf("host = %s\n", host);
+    printf("port = %s\n", port);
+    printf("resource = %s\n", resource);
+    printf("version = %s\n\n", version);
 
     // make_host_and_port(host_and_port, host, port);
     char* port_pointer = port;
@@ -298,35 +311,33 @@ void *thread(void *vargp)
         strncat(new_request, end_line,BUFSIZ);
         strncat(new_request, host_init, BUFSIZ);
         strncat(new_request, host, BUFSIZ);
-        // if (strcmp(port, "80")){
-        //     strncat(new_request, colon, BUFSIZ);
-        //     strncat(new_request, port, BUFSIZ);
-        // }
-        // else {
-        //     strncat(new_request, ":", 2);
-        //     strncat(new_request, "80", 4);
-        // }
-                    strncat(new_request, colon, BUFSIZ);
-            strncat(new_request, port, BUFSIZ);
+        strncat(new_request, colon, BUFSIZ);
+        strncat(new_request, port, BUFSIZ);
         strncat(new_request, end_line, BUFSIZ);
         strncat(new_request, user_agent_hdr, BUFSIZ);
         strncat(new_request, accept_line_hdr, BUFSIZ);
         strncat(new_request, connection_hdr, BUFSIZ);
         strncat(new_request, proxy_connection_hdr, BUFSIZ);
         strncat(new_request, end_line, BUFSIZ);
-        // printf("new_request: \n\n%s\n", p);
+        // strncat(new_request, '\0', 2);
+        printf("new_request: \n\n%s\n", p);
+                // strncat(new_request, '\0', 2);
+
         int request_length = 0;
+
         request_length = strlen(new_request);
 
-        // printf("request length = %d\n", request_length);
-        // printf("request length = %d\n", strlen(request));
+
+        printf("request length = %d\n", request_length);
+        // printf("request length = %d\n", strlen(new_request));
         char request_to_forward[MAXBUF];
-        request_length = create_send_socket(sfd, port, host, new_request, request_length, request_to_forward);
+        printf("request length = %d\n", request_length);
+        int response_length = create_send_socket(sfd, port, host, new_request, request_length, request_to_forward);
         // send_request(sfd, new_request, request_length);
         // printf("going into read_bytes\n");
         // read_bytes_from_server(sfd, request_to_forward);
-        // printf("request_to_forward = %s\n", request_to_forward);
-        forward_bytes_to_client(connfd, request_to_forward, request_length);
+        printf("request_to_forward = %s\n", request_to_forward);
+        forward_bytes_to_client(connfd, request_to_forward, response_length);
     }
     else {
         // simply close connection and move on

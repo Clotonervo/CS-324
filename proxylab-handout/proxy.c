@@ -89,9 +89,30 @@ int parse_request(char* request, char* type, char* protocol, char* host, char* p
 	return 0;
 }
 
+// int read_bytes_from_server(int fd, char* p)
+// {
+//     printf("in read_bytes");
+//     int total_read = 0;
+//     ssize_t nread = 0;
+//     char temp_buf[MAXBUF] = {0};
+//     char temp[MAXBUF] = {0};
+//     while(1) {
+// 		nread = recv(fd, (p + total_read), MAXBUF, 0);
+//         total_read += nread;
+//          printf("nread = %d\n", nread);
+// 		if (nread == -1) {
+//             printf("error: %s\n", strerror(errno));
+// 			continue;     
+//         }         
+
+//         if (nread == 0){
+//             break;
+//         }
+//     }
+// }
+
 int read_bytes(int fd, char* p)
 {
-    printf("in read_bytes");
     int total_read = 0;
     ssize_t nread = 0;
     char temp_buf[MAXBUF] = {0};
@@ -125,7 +146,7 @@ int read_bytes(int fd, char* p)
     return total_read;
 }
 
-int create_send_socket(int sfd, char* port, char* host)
+int create_send_socket(int sfd, char* port, char* host, char* request, char* length, char* p)
 {
         /* Obtain address(es) matching host/port */
     struct addrinfo hints;
@@ -163,6 +184,52 @@ int create_send_socket(int sfd, char* port, char* host)
     }
     freeaddrinfo(result);           /* No longer needed */
 
+    ssize_t nread;
+    // printf("in send_request \n");
+
+    while (length > 0)
+    {
+        nread = write(sfd, request, length);
+        if (nread <= 0)
+            break;
+        request += nread;
+        length -= nread;
+    }
+
+        // printf("in read_bytes");
+    int total_read = 0;
+    nread = 0;
+    char temp_buf[MAXBUF] = {0};
+    char temp[MAXBUF] = {0};
+    while(1) {
+		nread = recv(sfd, (p + total_read), MAXBUF, 0);
+        total_read += nread;
+        //  printf("nread = %d\n", nread);
+		if (nread == -1) {
+            printf("error: %s\n", strerror(errno));
+			continue;     
+        }         
+
+        if (nread == 0){
+            break;
+        }
+    }
+    return total_read;
+}
+
+forward_bytes_to_client(int sfd, char* request_to_forward, int length)
+{
+    ssize_t nread;
+    // printf("length = %d\n", length);
+    while (length > 0)
+    {
+        nread = write(sfd, request_to_forward, length);
+        if (nread <= 0)
+            printf("error: %s\n", strerror(errno));
+            break;
+        request_to_forward += nread;
+        length -= nread;
+    }
 }
 
 void send_request(int sfd, char* request, int length)
@@ -197,18 +264,18 @@ void *thread(void *vargp)
     int sfd = 0;
 
     int req_val = 0;
-    printf("in thread function\n");
+    // printf("in thread function\n");
     read_bytes(connfd,request);
     // printf("%s\n", request);
 
     req_val = parse_request(request, type, protocal, host, port, resource, version);
-    printf("request = %s\n", request);
-    printf("type = %s\n", type);
-    printf("protocal = %s\n", protocal);
-    printf("host = %s\n", host);
-    printf("port = %s\n", port);
-    printf("resource = %s\n", resource);
-    printf("version = %s\n\n", version);
+    // printf("request = %s\n", request);
+    // printf("type = %s\n", type);
+    // printf("protocal = %s\n", protocal);
+    // printf("host = %s\n", host);
+    // printf("port = %s\n", port);
+    // printf("resource = %s\n", resource);
+    // printf("version = %s\n\n", version);
 
     // make_host_and_port(host_and_port, host, port);
     char* port_pointer = port;
@@ -254,11 +321,12 @@ void *thread(void *vargp)
         // printf("request length = %d\n", request_length);
         // printf("request length = %d\n", strlen(request));
         char request_to_forward[MAXBUF];
-        create_send_socket(sfd, port, host);
-        send_request(sfd, new_request, request_length);
-        printf("going into read_bytes\n");
-        read_bytes(sfd, request_to_forward);
-        printf("request_to_forward = %s\n", request_to_forward);
+        request_length = create_send_socket(sfd, port, host, new_request, request_length, request_to_forward);
+        // send_request(sfd, new_request, request_length);
+        // printf("going into read_bytes\n");
+        // read_bytes_from_server(sfd, request_to_forward);
+        // printf("request_to_forward = %s\n", request_to_forward);
+        forward_bytes_to_client(connfd, request_to_forward, request_length);
     }
     else {
         // simply close connection and move on

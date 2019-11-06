@@ -91,18 +91,21 @@ int parse_request(char* request, char* type, char* protocol, char* host, char* p
 
 int read_bytes(int fd, char* p)
 {
-    // printf("in read_bytes");
-            printf(" p = %p\n", p);
+    printf("in read_bytes");
     int total_read = 0;
     ssize_t nread = 0;
+    char temp_buf[MAXBUF] = {0};
+    char temp[MAXBUF] = {0};
     while(1) {
 		nread = recv(fd, (p + total_read), MAXBUF, 0);
         total_read += nread;
-        printf("got here \n");
-        printf("total_read = %d\n", total_read);
+        int index = nread - 4;
+        strcpy(temp_buf, p + nread - 4);
         printf("nread = %d\n", nread);
-        sleep(1);
-         printf(" p = %p\n ", p);
+
+        if(!strcmp(temp_buf, "\r\n\r\n")){
+            break;
+        }
 
 		if (nread == -1) {
 			continue;     
@@ -115,7 +118,7 @@ int read_bytes(int fd, char* p)
         //     break;
         // }
 	}
-        printf("Received:%zd\n", total_read);
+        // printf("Received:%zd\n", total_read);
 
     return total_read;
 }
@@ -158,13 +161,12 @@ int create_send_socket(int sfd, char* port, char* host)
     }
     freeaddrinfo(result);           /* No longer needed */
 
-
-
 }
 
 void send_request(int sfd, char* request, int length)
 {
     ssize_t nread;
+    // printf("in send_request \n");
 
     while (length > 0)
     {
@@ -174,38 +176,9 @@ void send_request(int sfd, char* request, int length)
         request += nread;
         length -= nread;
     }
+    // printf("exiting send request\n");
+
 }
-
-// void make_host_and_port (char* host_and_port, char* host, char* port)
-// {
-//     int length = strlen(host) + strlen(port) + strlen(host_init);
-    
-//     for (int i = 0; i <strlen(host_init); i++){
-//         host_and_port[i] = host_init[i];
-//     }
-//         printf("host_and_port = %s\n", host_and_port);
-
-//     for (int i = 0; i < strlen(host); i++){
-//         host_and_port[i + strlen(host_init)] = host[i];
-//     }
-//         printf("host_and_port = %s\n", host_and_port);
-//         printf("length = %d\n", length);
-//                 printf("size = %d\n", sizeof(host_and_port));
-
-
-//     for (int i = 0; i < strlen(port); i++){
-//         printf("i = %d\n",i + strlen(host) + strlen(host_init));
-//         printf("host_and_port[i] = %p\n", host_and_port[i + strlen(host) + strlen(host_init)]);
-//         printf("port[i] = %p\n", port[i]);
-//         host_and_port[i + strlen(host) + strlen(host_init)] = port[i];
-//                 printf("host_and_port[i] = %p\n", host_and_port[i + strlen(host) + strlen(host_init)]);
-//                 printf("host_and_port[i] = %p\n", i);
-
-//     }
-//     host_and_port[length] = '\0';
-//     sleep(1);
-//     printf("host_and_port is now = %s\n", host_and_port);
-// }
 
 void *thread(void *vargp) 
 {  
@@ -270,15 +243,18 @@ void *thread(void *vargp)
         strncat(new_request, connection_hdr, BUFSIZ);
         strncat(new_request, proxy_connection_hdr, BUFSIZ);
         strncat(new_request, end_line, BUFSIZ);
-        printf("new_request: \n\n%s\n", p);
+        // printf("new_request: \n\n%s\n", p);
         int request_length = 0;
         request_length = strlen(new_request);
 
         // printf("request length = %d\n", request_length);
         // printf("request length = %d\n", strlen(request));
-
+        char request_to_forward[MAXBUF];
         create_send_socket(sfd, port, host);
         send_request(sfd, new_request, request_length);
+        printf("going into read_bytes\n");
+        read_bytes(sfd, request_to_forward);
+        printf("request_to_forward = %s\n", request_to_forward);
     }
     else {
         // simply close connection and move on

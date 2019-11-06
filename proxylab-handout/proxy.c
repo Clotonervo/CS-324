@@ -101,19 +101,21 @@ int read_bytes(int fd, char* p)
         total_read += nread;
         int index = nread - 4;
         strcpy(temp_buf, p + nread - 4);
-        printf("nread = %d\n", nread);
-
-        if(!strcmp(temp_buf, "\r\n\r\n")){
-            break;
-        }
-
+        // printf("nread = %d\n", nread);
 		if (nread == -1) {
+            printf(errno);
 			continue;     
         }         
 
         if (nread == 0){
             break;
         }
+        
+        if(!strcmp(temp_buf, "\r\n\r\n")){
+            break;
+        }
+
+
         // if(strcmp(p[total_read - 3], "\r\n")){
         //     break;
         // }
@@ -177,7 +179,7 @@ void send_request(int sfd, char* request, int length)
         length -= nread;
     }
     // printf("exiting send request\n");
-    printf("nread = %d\n", nread);
+    // printf("nread = %d\n", nread);
 }
 
 void *thread(void *vargp) 
@@ -229,14 +231,16 @@ void *thread(void *vargp)
         strncat(new_request, end_line,BUFSIZ);
         strncat(new_request, host_init, BUFSIZ);
         strncat(new_request, host, BUFSIZ);
-        if (strcmp(port, "80")){
-            strncat(new_request, colon, BUFSIZ);
+        // if (strcmp(port, "80")){
+        //     strncat(new_request, colon, BUFSIZ);
+        //     strncat(new_request, port, BUFSIZ);
+        // }
+        // else {
+        //     strncat(new_request, ":", 2);
+        //     strncat(new_request, "80", 4);
+        // }
+                    strncat(new_request, colon, BUFSIZ);
             strncat(new_request, port, BUFSIZ);
-        }
-        else {
-            strncat(new_request, ":", 2);
-            strncat(new_request, "80", 4);
-        }
         strncat(new_request, end_line, BUFSIZ);
         strncat(new_request, user_agent_hdr, BUFSIZ);
         strncat(new_request, accept_line_hdr, BUFSIZ);

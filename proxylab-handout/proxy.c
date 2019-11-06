@@ -177,7 +177,7 @@ void send_request(int sfd, char* request, int length)
         length -= nread;
     }
     // printf("exiting send request\n");
-
+    printf("nread = %d\n", nread);
 }
 
 void *thread(void *vargp) 

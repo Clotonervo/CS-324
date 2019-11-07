@@ -262,7 +262,8 @@ The autograder also checks for memory leaks and compiler warnings. In order to g
 The following is the point breakdown:
 
  - 25 points for a well-formed DNS query message
- - 20 points for successfully sending the query and receiving the response • 25 points for successfully finding the answer in the answer section
+ - 20 points for successfully sending the query and receiving the response 
+ - 25 points for successfully finding the answer in the answer section
  - 10 points for handling CNAME records properly
  - 10 points for handling names that don’t resolve
  - 5 points for handling the root name properly
@@ -272,4 +273,5 @@ The following is the point breakdown:
 The maxmimum number of points is 100.
 
 <h3>Handing in Your Work</h3>
+
 To submit your lab, please upload your `resolver.c` file to the assignment page corresponding to the DNS resolver lab on Learning Suite.

@@ -62,8 +62,11 @@ void parse_host_and_port(char* request, char* host, char* port)
 
 int parse_request(char* request, char* type, char* protocol, char* host, char* port, char* resource, char* version){
 	char url[MAXBUF];
-	
-	if((!strstr(request, "/")) || strlen(request) == 0) {
+	if(strlen(request) == 0) {
+        return -1;
+    }
+
+	if(!strstr(request, "/")){ 
 		return -1;
     }
 
@@ -158,14 +161,11 @@ int create_send_socket(int sfd, char* port, char* host, char* request, int lengt
         length -= nread;
     }
 
-        printf("in read_bytes\n");
     int total_read = 0;
     nread = 0;
     while(1) {
-        printf("in reading while\n");
 		nread = recv(sfd, (p + total_read), MAXBUF, 0);
         total_read += nread;
-         printf("nread = %d\n", total_read);
 		if (nread == -1) {
             printf("error: %s\n", strerror(errno));
 			continue;     
@@ -175,7 +175,6 @@ int create_send_socket(int sfd, char* port, char* host, char* request, int lengt
             break;
         }
     }
-    printf("returning\n");
     sleep(1);
     return total_read;
 }

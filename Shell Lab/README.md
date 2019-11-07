@@ -249,6 +249,7 @@ Checking trace16.txt...
 
 <h3>Hints</h3>
  - Read every word of Chapter 8 (Exceptional Control Flow) in your textbook.
+ 
  - Use the trace files to guide the development of your shell. Starting with `trace01.txt`, make
 sure that your shell produces the identical output as the reference shell. Then move on to trace file
 `trace02.txt`, and so on.

@@ -5,15 +5,15 @@ CS:APP Shell Lab
 <h1>Writing Your Own Unix Shell</h1>
 <h2>A CS 324 Lab</h2>
 
-<h4>Introduction</h4>
+<h3>Introduction</h3>
 The purpose of this assignment is to become more familiar with the concepts of process control and signalling.
 You’ll do this by writing a simple Unix shell program that supports job control.
 
-<h4>Logistics</h4>
+<h3>Logistics</h3>
 You will work on your own solving the problems for this assignment. The only “hand-in” will be electronic.
 Any clarifications and revisions to the assignment will be posted on the course Web page.
 
-<h4>Hand Out Instructions</h4>
+<h3>Hand Out Instructions</h3>
 Start by downloading the file shlab-handout.tar from the LearningSuite assignment page for this
 assignment. Save it to the protected directory (the lab directory) in which you plan to do your work.
 
@@ -41,7 +41,7 @@ command line:
 unix> ./tsh
 tsh> [type commands to your shell here]
 
-<h4>General Overview of Unix Shells</h4>
+<h3>General Overview of Unix Shells</h3>
 
 A shell is an interactive command-line interpreter that runs programs on behalf of the user. A shell repeatedly
 prints a prompt, waits for a command line on stdin, and then carries out some action, as directed by
@@ -98,7 +98,7 @@ also provide various built-in commands that support job control. For example:
 • fg <job>: Change a stopped or running background job to a running in the foreground.
 • kill <job>: Terminate a job.
 
-<h4>The tsh Specification</h4>
+<h3>The tsh Specification</h3>
 
 Your tsh shell should have the following features:
 • The prompt should be the string “tsh> ”.
@@ -128,7 +128,7 @@ the foreground. The <job> argument can be either a PID or a JID.
 it didn’t catch, then tsh should recognize this event and print a message with the job’s PID and a
 description of the offending signal.
 
-<h4>Checking Your Work</h4>
+<h3>Checking Your Work</h3>
 
 We have provided some tools to help you check your work.
 <strong>Reference solution</strong> The Linux executable tshref is the reference solution for the shell. Run this program
@@ -250,7 +250,7 @@ Checking trace15.txt...
 Checking trace16.txt...
 ```
 
-<h4>Hints</h4>
+<h3>Hints</h3>
 • Read every word of Chapter 8 (Exceptional Control Flow) in your textbook.
 • Use the trace files to guide the development of your shell. Starting with trace01.txt, make
 sure that your shell produces the identical output as the reference shell. Then move on to trace file
@@ -288,7 +288,7 @@ child’s PID. This ensures that there will be only one process, your shell, in 
 group. When you type ctrl-c, the shell should catch the resulting SIGINT and then forward it
 to the appropriate foreground job (or more precisely, the process group that contains the foreground
 job).
-<h4>Evaluation</h4>
+<h3>Evaluation</h3>
 Your score will be computed out of a maximum of 100 points based on the following distribution:
 
 <strong>96</strong> Correctness: 16 trace files at 6 points each.
@@ -302,7 +302,7 @@ the reference shell, with only two exceptions:
  - The PIDs can (and will) be different.
  - The output of the /bin/ps commands in trace11.txt, trace12.txt, and trace13.txt will be different from run to run. However, the running states of any mysplit processes in the output of the /bin/ps command should be identical.
 
-<h4>Hand In Instructions</h4>
+<h3>Hand In Instructions</h3>
 Important: Copy your files over to one the CS lab machines, and ensure that all the test cases run as expected
 (e.g., with make testall). You can use scp or sftp to transfer your files.
 
@@ -314,25 +314,28 @@ Good luck!
 Files:
 
 Makefile	# Compiles your shell program and runs the tests
+
 README		# This file
+
 tsh.c		# The shell program that you will write and hand in
+
 tshref		# The reference shell binary.
 
 # The remaining files are used to test your shell
-sdriver.pl	# The trace-driven shell driver
+`sdriver.pl`	# The trace-driven shell driver
 
-checktsh.pl	# The script for comparing user output to reference output
+`checktsh.pl`	# The script for comparing user output to reference output
 
-trace*.txt	# The 15 trace files that control the shell driver
+`trace*.txt`	# The 15 trace files that control the shell driver
 
-tshref.out 	# Example output of the reference shell on all 15 traces
+`tshref.out` 	# Example output of the reference shell on all 15 traces
 
 
 # Little C programs that are called by the trace files
-myspin.c	# Takes argument <n> and spins for <n> seconds
+`myspin.c`		# Takes argument <n> and spins for <n> seconds
 
-mysplit.c	# Forks a child that spins for <n> seconds
+`mysplit.c`		# Forks a child that spins for <n> seconds
 
-mystop.c        # Spins for <n> seconds and sends SIGTSTP to itself
+`mystop.c`      # Spins for <n> seconds and sends SIGTSTP to itself
 
-myint.c         # Spins for <n> seconds and sends SIGINT to itself
+`myint.c`       # Spins for <n> seconds and sends SIGINT to itself

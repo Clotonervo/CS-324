@@ -27,24 +27,26 @@ is to complete the remaining empty functions listed below. As a sanity check for
 approximate number of lines of code for each of these functions in our reference solution (which includes
 lots of comments).
 
--`eval`: Main routine that parses and interprets the command line. [70 lines]
--`builtin cmd`: Recognizes and interprets the built-in commands: quit, fg, bg, and jobs. [25
-lines]
-1
+ - `eval`: Main routine that parses and interprets the command line. [70 lines]
+ - `builtin cmd`: Recognizes and interprets the built-in commands: quit, fg, bg, and jobs. [25 lines]
+
 • do bgfg: Implements the bg and fg built-in commands. [50 lines]
 • waitfg: Waits for a foreground job to complete. [20 lines]
 • sigchld handler: Catches SIGCHILD signals. 80 lines]
 • sigint handler: Catches SIGINT (ctrl-c) signals. [15 lines]
 • sigtstp handler: Catches SIGTSTP (ctrl-z) signals. [15 lines]
+
 Each time you modify your tsh.c file, type make to recompile it. To run your shell, type tsh to the
 command line:
 unix> ./tsh
 tsh> [type commands to your shell here]
 
 <h4>General Overview of Unix Shells</h4>
+
 A shell is an interactive command-line interpreter that runs programs on behalf of the user. A shell repeatedly
 prints a prompt, waits for a command line on stdin, and then carries out some action, as directed by
 the contents of the command line.
+
 The command line is a sequence of ASCII text words delimited by whitespace. The first word in the
 command line is either the name of a built-in command or the pathname of an executable file. The remaining
 words are command-line arguments. If the first word is a built-in command, the shell immediately executes
@@ -57,22 +59,32 @@ the shell does not wait for the job to terminate before printing the prompt and 
 line. Otherwise, the job runs in the foreground, which means that the shell waits for the job to terminate
 before awaiting the next command line. Thus, at any point in time, at most one job can be running in the
 foreground. However, an arbitrary number of jobs can run in the background.
+
 For example, typing the command line
 tsh> jobs
+
 causes the shell to execute the built-in jobs command. Typing the command line
+
 tsh> /bin/ls -l -d
+
 runs the ls program in the foreground. By convention, the shell ensures that when the program begins
+
 executing its main routine
+
 int main(int argc, char *argv[])
-2
+
 the argc and argv arguments have the following values:
 • argc == 3,
 • argv[0] == ‘‘/bin/ls’’,
 • argv[1]== ‘‘-l’’,
 • argv[2]== ‘‘-d’’.
+
 Alternatively, typing the command line
+
 tsh> /bin/ls -l -d &
+
 runs the ls program in the background.
+
 Unix shells support the notion of job control, which allows users to move jobs back and forth between background
 and foreground, and to change the process state (running, stopped, or terminated) of the processes
 in a job. Typing ctrl-c causes a SIGINT signal to be delivered to each process in the foreground job. The
@@ -80,11 +92,14 @@ default action for SIGINT is to terminate the process. Similarly, typing ctrl-z 
 to be delivered to each process in the foreground job. The default action for SIGTSTP is to place a process
 in the stopped state, where it remains until it is awakened by the receipt of a SIGCONT signal. Unix shells
 also provide various built-in commands that support job control. For example:
+
 • jobs: List the running and stopped background jobs.
 • bg <job>: Change a stopped background job to a running background job.
 • fg <job>: Change a stopped or running background job to a running in the foreground.
 • kill <job>: Terminate a job.
-The tsh Specification
+
+<h4>The tsh Specification</h4>
+
 Your tsh shell should have the following features:
 • The prompt should be the string “tsh> ”.
 • The command line typed by the user should consist of a name and zero or more arguments, all separated
@@ -93,7 +108,6 @@ and wait for the next command line. Otherwise, tsh should assume that name is th
 executable file, which it loads and runs in the context of an initial child process (In this context, the
 term job refers to this initial child process).
 • tsh need not support pipes (|) or I/O redirection (< and >).
-3
 • Typing ctrl-c (ctrl-z) should cause a SIGINT (SIGTSTP) signal to be sent to the current foreground
 job, as well as any descendents of that job (e.g., any child processes that it forked). If there is
 no foreground job, then the signal should have no effect.
@@ -113,14 +127,17 @@ the foreground. The <job> argument can be either a PID or a JID.
 • tsh should reap all of its zombie children. If any job terminates because it receives a signal that
 it didn’t catch, then tsh should recognize this event and print a message with the job’s PID and a
 description of the offending signal.
-Checking Your Work
+
+<h4>Checking Your Work</h4>
+
 We have provided some tools to help you check your work.
-Reference solution. The Linux executable tshref is the reference solution for the shell. Run this program
-to resolve any questions you have about how your shell should behave. Your shell should emit output that is
-identical to the reference solution (except for PIDs, of course, which change from run to run).
-Shell driver. The sdriver.pl program executes a shell as a child process, sends it commands and signals
+<strong>Reference solution</strong> The Linux executable tshref is the reference solution for the shell. Run this program
+to resolve any questions you have about how your shell should behave. <em>Your shell should emit output that is
+identical to the reference solution</em> (except for PIDs, of course, which change from run to run).
+<strong>Shell driver</strong> The sdriver.pl program executes a shell as a child process, sends it commands and signals
 as directed by a trace file, and captures and displays the output from the shell.
 Use the -h argument to find out the usage of sdriver.pl:
+
 unix> ./sdriver.pl -h
 Usage: sdriver.pl [-hv] -t <trace> -s <shellprog> -a <args>
 Options:
@@ -130,23 +147,31 @@ Options:
 -s <shell> Shell program to test
 -a <args> Shell arguments
 -g Generate output for autograder
-4
-We have also provided 16 trace files (trace{01-16}.txt) that you will use in conjunction with the shell
-driver to test the correctness of your shell. The lower-numbered trace files do very simple tests, and the
-higher-numbered tests do more complicated tests.
+
+We have also provided 16 trace files (trace{01-16}.txt) that you will use in conjunction with the shell driver to test the correctness of your shell. The lower-numbered trace files do very simple tests, and the higher-numbered tests do more complicated tests.
+
 You can run the shell driver on your shell using trace file trace01.txt (for instance) by typing:
+
 unix> ./sdriver.pl -t trace01.txt -s ./tsh -a "-p"
+
 (the -a "-p" argument tells your shell not to emit a prompt), or
+
 unix> make stest01
-Similarly, to compare your result with the reference shell, you can run the trace driver on the reference shell
-by typing:
+
+Similarly, to compare your result with the reference shell, you can run the trace driver on the reference shell by typing:
+
 unix> ./sdriver.pl -t trace01.txt -s ./tshref -a "-p"
+
 or
+
 unix> make rtest01
+
 For your reference, tshref.out gives the output of the reference solution on all races. This might be
 more convenient for you than manually running the shell driver on all trace files.
+
 The neat thing about the trace files is that they generate the same output you would have gotten had you run
 your shell interactively (except for an initial comment that identifies the trace). For example:
+```
 bass> make stest15
 ./sdriver.pl -t trace15.txt -s ./tsh -a "-p"
 #
@@ -179,10 +204,13 @@ tsh> jobs
 tsh> fg %1
 tsh> quit
 bass>
-Shell checker. The checktsh.pl program utilizes sdriver.pl to execute both your shell and the
+```
+
+<strong>Shell checker</strong> The checktsh.pl program utilizes sdriver.pl to execute both your shell and the
 reference shell and then compare them line by line, so you can see any differences clearly . This tool will
 be used to automatically grade your assignment, so you will want to use it to check your assignment! You
 can use make to test a single test case as follows:
+```
 bass> make test01
 ./checktsh.pl -v -t trace01.txt
 **************************************
@@ -196,7 +224,11 @@ bass> make test01
 #
 # trace01.txt - Properly terminate on EOF.
 #
+```
+
 Or you can test all tests:
+
+```
 bass> make testall
 ./checktsh.pl
 Checking trace01.txt...
@@ -216,7 +248,9 @@ Checking trace13.txt...
 Checking trace14.txt...
 Checking trace15.txt...
 Checking trace16.txt...
-Hints
+```
+
+<h4>Hints</h4>
 • Read every word of Chapter 8 (Exceptional Control Flow) in your textbook.
 • Use the trace files to guide the development of your shell. Starting with trace01.txt, make
 sure that your shell produces the identical output as the reference shell. Then move on to trace file
@@ -254,23 +288,28 @@ child’s PID. This ensures that there will be only one process, your shell, in 
 group. When you type ctrl-c, the shell should catch the resulting SIGINT and then forward it
 to the appropriate foreground job (or more precisely, the process group that contains the foreground
 job).
-Evaluation
+<h4>Evaluation</h4>
 Your score will be computed out of a maximum of 100 points based on the following distribution:
-96 Correctness: 16 trace files at 6 points each.
-4 Style points.
+
+<strong>96</strong> Correctness: 16 trace files at 6 points each.
+
+<strong>4</strong> Style points.
+
 Your solution shell will be tested for correctness on a Linux machine, using the same shell driver and trace
 files that were included in your lab directory. Your shell should produce identical output on these traces as
 the reference shell, with only two exceptions:
-• The PIDs can (and will) be different.
-• The output of the /bin/ps commands in trace11.txt, trace12.txt, and trace13.txt
-will be different from run to run. However, the running states of any mysplit processes in the
-output of the /bin/ps command should be identical.
-Hand In Instructions
+
+ - The PIDs can (and will) be different.
+ - The output of the /bin/ps commands in trace11.txt, trace12.txt, and trace13.txt will be different from run to run. However, the running states of any mysplit processes in the output of the /bin/ps command should be identical.
+
+<h4>Hand In Instructions</h4>
 Important: Copy your files over to one the CS lab machines, and ensure that all the test cases run as expected
 (e.g., with make testall). You can use scp or sftp to transfer your files.
+
 To submit your work, upload (only) your working tsh.c to the assignment page on LearningSuite.
+
 Good luck!
-8
+
 
 
 

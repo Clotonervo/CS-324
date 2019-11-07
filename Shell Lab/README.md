@@ -29,12 +29,11 @@ lots of comments).
 
  - `eval`: Main routine that parses and interprets the command line. [70 lines]
  - `builtin cmd`: Recognizes and interprets the built-in commands: quit, fg, bg, and jobs. [25 lines]
-
-• do bgfg: Implements the bg and fg built-in commands. [50 lines]
-• waitfg: Waits for a foreground job to complete. [20 lines]
-• sigchld handler: Catches SIGCHILD signals. 80 lines]
-• sigint handler: Catches SIGINT (ctrl-c) signals. [15 lines]
-• sigtstp handler: Catches SIGTSTP (ctrl-z) signals. [15 lines]
+ - `do_bgfg`: Implements the bg and fg built-in commands. [50 lines]
+ - waitfg: Waits for a foreground job to complete. [20 lines]
+ - sigchld handler: Catches SIGCHILD signals. 80 lines]
+ - sigint handler: Catches SIGINT (ctrl-c) signals. [15 lines]
+ - sigtstp handler: Catches SIGTSTP (ctrl-z) signals. [15 lines]
 
 Each time you modify your tsh.c file, type make to recompile it. To run your shell, type tsh to the
 command line:
@@ -74,10 +73,10 @@ executing its main routine
 int main(int argc, char *argv[])
 
 the argc and argv arguments have the following values:
-• argc == 3,
-• argv[0] == ‘‘/bin/ls’’,
-• argv[1]== ‘‘-l’’,
-• argv[2]== ‘‘-d’’.
+ - argc == 3,
+ - argv[0] == ‘‘/bin/ls’’,
+ - argv[1]== ‘‘-l’’,
+ - argv[2]== ‘‘-d’’.
 
 Alternatively, typing the command line
 
@@ -93,40 +92,36 @@ to be delivered to each process in the foreground job. The default action for SI
 in the stopped state, where it remains until it is awakened by the receipt of a SIGCONT signal. Unix shells
 also provide various built-in commands that support job control. For example:
 
-• jobs: List the running and stopped background jobs.
-• bg <job>: Change a stopped background job to a running background job.
-• fg <job>: Change a stopped or running background job to a running in the foreground.
-• kill <job>: Terminate a job.
+ - jobs: List the running and stopped background jobs.
+ - bg <job>: Change a stopped background job to a running background job.
+ - fg <job>: Change a stopped or running background job to a running in the foreground.
+ - kill <job>: Terminate a job.
 
 <h3>The tsh Specification</h3>
 
 Your tsh shell should have the following features:
-• The prompt should be the string “tsh> ”.
-• The command line typed by the user should consist of a name and zero or more arguments, all separated
+ - The prompt should be the string “tsh> ”.
+ - The command line typed by the user should consist of a name and zero or more arguments, all separated
 by one or more spaces. If name is a built-in command, then tsh should handle it immediately
 and wait for the next command line. Otherwise, tsh should assume that name is the path of an
 executable file, which it loads and runs in the context of an initial child process (In this context, the
 term job refers to this initial child process).
-• tsh need not support pipes (|) or I/O redirection (< and >).
-• Typing ctrl-c (ctrl-z) should cause a SIGINT (SIGTSTP) signal to be sent to the current foreground
+ - tsh need not support pipes (|) or I/O redirection (< and >).
+ - Typing ctrl-c (ctrl-z) should cause a SIGINT (SIGTSTP) signal to be sent to the current foreground
 job, as well as any descendents of that job (e.g., any child processes that it forked). If there is
 no foreground job, then the signal should have no effect.
-• If the command line ends with an ampersand &, then tsh should run the job in the background.
+ - If the command line ends with an ampersand &, then tsh should run the job in the background.
 Otherwise, it should run the job in the foreground.
-• Each job can be identified by either a process ID (PID) or a job ID (JID), which is a positive integer
+ - Each job can be identified by either a process ID (PID) or a job ID (JID), which is a positive integer
 assigned by tsh. JIDs should be denoted on the command line by the prefix ’%’. For example, “%5”
 denotes JID 5, and “5” denotes PID 5. (We have provided you with all of the routines you need for
 manipulating the job list.)
-• tsh should support the following built-in commands:
-– The quit command terminates the shell.
-– The jobs command lists all background jobs.
-– The bg <job> command restarts <job> by sending it a SIGCONT signal, and then runs it in
-the background. The <job> argument can be either a PID or a JID.
-– The fg <job> command restarts <job> by sending it a SIGCONT signal, and then runs it in
-the foreground. The <job> argument can be either a PID or a JID.
-• tsh should reap all of its zombie children. If any job terminates because it receives a signal that
-it didn’t catch, then tsh should recognize this event and print a message with the job’s PID and a
-description of the offending signal.
+ - tsh should support the following built-in commands:
+   - The quit command terminates the shell.
+   - The jobs command lists all background jobs.
+   - The bg <job> command restarts <job> by sending it a SIGCONT signal, and then runs it in the background. The <job> argument can be either a PID or a JID.
+   - The fg <job> command restarts <job> by sending it a SIGCONT signal, and then runs it in the foreground. The <job> argument can be either a PID or a JID.
+ - tsh should reap all of its zombie children. If any job terminates because it receives a signal that it didn’t catch, then tsh should recognize this event and print a message with the job’s PID and a description of the offending signal.
 
 <h3>Checking Your Work</h3>
 
@@ -151,21 +146,21 @@ Options:
 We have also provided 16 trace files (trace{01-16}.txt) that you will use in conjunction with the shell driver to test the correctness of your shell. The lower-numbered trace files do very simple tests, and the higher-numbered tests do more complicated tests.
 
 You can run the shell driver on your shell using trace file trace01.txt (for instance) by typing:
-
+```
 unix> ./sdriver.pl -t trace01.txt -s ./tsh -a "-p"
-
+```
 (the -a "-p" argument tells your shell not to emit a prompt), or
-
+```
 unix> make stest01
-
+```
 Similarly, to compare your result with the reference shell, you can run the trace driver on the reference shell by typing:
-
+```
 unix> ./sdriver.pl -t trace01.txt -s ./tshref -a "-p"
-
+```
 or
-
+```
 unix> make rtest01
-
+```
 For your reference, tshref.out gives the output of the reference solution on all races. This might be
 more convenient for you than manually running the shell driver on all trace files.
 
@@ -206,7 +201,7 @@ tsh> quit
 bass>
 ```
 
-<strong>Shell checker</strong> The checktsh.pl program utilizes sdriver.pl to execute both your shell and the
+<strong>Shell checker</strong> The `checktsh.pl` program utilizes `sdriver.pl` to execute both your shell and the
 reference shell and then compare them line by line, so you can see any differences clearly . This tool will
 be used to automatically grade your assignment, so you will want to use it to check your assignment! You
 can use make to test a single test case as follows:
@@ -251,37 +246,38 @@ Checking trace16.txt...
 ```
 
 <h3>Hints</h3>
-• Read every word of Chapter 8 (Exceptional Control Flow) in your textbook.
-• Use the trace files to guide the development of your shell. Starting with trace01.txt, make
+ - Read every word of Chapter 8 (Exceptional Control Flow) in your textbook.
+ - Use the trace files to guide the development of your shell. Starting with trace01.txt, make
 sure that your shell produces the identical output as the reference shell. Then move on to trace file
 trace02.txt, and so on.
-• The waitpid, kill, fork, execve, setpgid, and sigprocmask functions will come in very
+ - The waitpid, kill, fork, execve, setpgid, and sigprocmask functions will come in very
 handy. The WUNTRACED and WNOHANG options to waitpid will also be useful.
-• When you implement your signal handlers, be sure to send SIGINT and SIGTSTP signals to the entire
+ - When you implement your signal handlers, be sure to send SIGINT and SIGTSTP signals to the entire
 foreground process group, using ”-pid” instead of ”pid” in the argument to the kill function.
 The sdriver.pl program tests for this error.
-• One of the tricky parts of the assignment is deciding on the allocation of work between the waitfg
+ - One of the tricky parts of the assignment is deciding on the allocation of work between the waitfg
 and sigchld handler functions. We recommend the following approach:
-– In waitfg, use a busy loop around the sleep function.
-– In sigchld handler, use exactly one call to waitpid.
-While other solutions are possible, such as calling waitpid in both waitfg and sigchld handler,
-these can be very confusing. It is simpler to do all reaping in the handler.
-• In eval, the parent must use sigprocmask to block SIGCHLD signals before it forks the child,
+   - In waitfg, use a busy loop around the sleep function.
+   - In sigchld handler, use exactly one call to waitpid.
+
+    While other solutions are possible, such as calling waitpid in both waitfg and sigchld handler, these can be very confusing. It is simpler to do all reaping in the handler.
+
+ - In eval, the parent must use sigprocmask to block SIGCHLD signals before it forks the child,
 and then unblock these signals, again using sigprocmask after it adds the child to the job list by
 calling addjob. Since children inherit the blocked vectors of their parents, the child must be sure
 to then unblock SIGCHLD signals before it execs the new program.
 The parent needs to block the SIGCHLD signals in this way in order to avoid the race condition where
 the child is reaped by sigchld handler (and thus removed from the job list) before the parent
 calls addjob.
-• Programs such as more, less, vi, and emacs do strange things with the terminal settings. Don’t
+ - Programs such as more, less, vi, and emacs do strange things with the terminal settings. Don’t
 run these programs from your shell. Stick with simple text-based programs such as /bin/ls,
 /bin/ps, and /bin/echo.
-• When you run your shell from the standard Unix shell, your shell is running in the foreground process
+ - When you run your shell from the standard Unix shell, your shell is running in the foreground process
 group. If your shell then creates a child process, by default that child will also be a member of the
 foreground process group. Since typing ctrl-c sends a SIGINT to every process in the foreground
 group, typing ctrl-c will send a SIGINT to your shell, as well as to every process that your shell
 created, which obviously isn’t correct.
-7
+
 Here is the workaround: After the fork, but before the execve, the child process should call
 setpgid(0, 0), which puts the child in a new process group whose group ID is identical to the
 child’s PID. This ensures that there will be only one process, your shell, in the foreground process

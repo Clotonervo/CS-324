@@ -249,20 +249,26 @@ Checking trace16.txt...
 
 <h3>Hints</h3>
  - Read every word of Chapter 8 (Exceptional Control Flow) in your textbook.
+
  - Use the trace files to guide the development of your shell. Starting with `trace01.txt`, make
 sure that your shell produces the identical output as the reference shell. Then move on to trace file
 `trace02.txt`, and so on.
+
  - The `waitpid`, `kill`, `fork`, `execve`, `setpgid`, and `sigprocmask` functions will come in very
 handy. The `WUNTRACED` and `WNOHANG` options to `waitpid` will also be useful.
+
  - When you implement your signal handlers, be sure to send `SIGINT` and `SIGTSTP` signals to the entire
 foreground process group, using `-pid` instead of `pid` in the argument to the kill function.
 The `sdriver.pl` program tests for this error.
+
  - One of the tricky parts of the assignment is deciding on the allocation of work between the waitfg
 and `sigchld_handler` functions. We recommend the following approach:
+
    - In `waitfg`, use a busy loop around the sleep function.
+
    - In `sigchld_handler`, use exactly one call to `waitpid`.
 
-    While other solutions are possible, such as calling waitpid in both waitfg and sigchld handler, these can be very confusing. It is simpler to do all reaping in the handler.
+   While other solutions are possible, such as calling waitpid in both waitfg and sigchld handler, these can be very confusing. It is simpler to do all reaping in the handler.
 
  - In eval, the parent must use sigprocmask to block `SIGCHLD` signals before it forks the child,
 and then unblock these signals, again using sigprocmask after it adds the child to the job list by
@@ -271,9 +277,11 @@ to then unblock `SIGCHLD` signals before it execs the new program.
 The parent needs to block the `SIGCHLD` signals in this way in order to avoid the race condition where
 the child is reaped by sigchld handler (and thus removed from the job list) before the parent
 calls addjob.
+
  - Programs such as more, less, vi, and emacs do strange things with the terminal settings. Don’t
 run these programs from your shell. Stick with simple text-based programs such as `/bin/ls`,
 `/bin/ps`, and `/bin/echo`.
+
  - When you run your shell from the standard Unix shell, your shell is running in the foreground process
 group. If your shell then creates a child process, by default that child will also be a member of the
 foreground process group. Since typing ctrl-c sends a `SIGINT` to every process in the foreground
@@ -299,6 +307,7 @@ files that were included in your lab directory. Your shell should produce identi
 the reference shell, with only two exceptions:
 
  - The PIDs can (and will) be different.
+ 
  - The output of the `/bin/ps` commands in `trace11.txt`, `trace12.txt`, and `trace13.txt` will be different from run to run. However, the running states of any mysplit processes in the output of the `/bin/ps` command should be identical.
 
 <h3>Hand In Instructions</h3>

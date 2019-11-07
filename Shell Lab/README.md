@@ -312,7 +312,7 @@ To submit your work, upload (only) your working tsh.c to the assignment page on 
 Good luck!
 
 
-Files:
+<h4>Files</h4>
 
 `Makefile`	# Compiles your shell program and runs the tests
 
@@ -322,7 +322,7 @@ Files:
 
 `tshref`	# The reference shell binary.
 
-# The remaining files are used to test your shell
+<h4>The remaining files are used to test your shell</h4>
 `sdriver.pl`	# The trace-driven shell driver
 
 `checktsh.pl`	# The script for comparing user output to reference output
@@ -331,8 +331,7 @@ Files:
 
 `tshref.out` 	# Example output of the reference shell on all 15 traces
 
-
-# Little C programs that are called by the trace files
+<h4>Little C programs that are called by the trace files</h4>
 `myspin.c`		# Takes argument <n> and spins for <n> seconds
 
 `mysplit.c`		# Forks a child that spins for <n> seconds

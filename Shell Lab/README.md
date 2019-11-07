@@ -311,24 +311,6 @@ To submit your work, upload (only) your working tsh.c to the assignment page on 
 Good luck!
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 Files:
 
 Makefile	# Compiles your shell program and runs the tests
@@ -338,13 +320,19 @@ tshref		# The reference shell binary.
 
 # The remaining files are used to test your shell
 sdriver.pl	# The trace-driven shell driver
+
 checktsh.pl	# The script for comparing user output to reference output
+
 trace*.txt	# The 15 trace files that control the shell driver
+
 tshref.out 	# Example output of the reference shell on all 15 traces
+
 
 # Little C programs that are called by the trace files
 myspin.c	# Takes argument <n> and spins for <n> seconds
-mysplit.c	# Forks a child that spins for <n> seconds
-mystop.c        # Spins for <n> seconds and sends SIGTSTP to itself
-myint.c         # Spins for <n> seconds and sends SIGINT to itself
 
+mysplit.c	# Forks a child that spins for <n> seconds
+
+mystop.c        # Spins for <n> seconds and sends SIGTSTP to itself
+
+myint.c         # Spins for <n> seconds and sends SIGINT to itself

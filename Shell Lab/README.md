@@ -19,15 +19,16 @@ assignment. Save it to the protected directory (the lab directory) in which you 
 
 -Type the command `tar xvf shlab-handout.tar` to expand the tarfile.
 -Type the command make to compile and link some test routines.
--Type your name and BYU netid in the header comment at the top of tsh.c.
+-Type your name and BYU netid in the header comment at the top of `tsh.c`.
 
 Looking at the tsh.c (tiny shell) file, you will see that it contains a functional skeleton of a simple Unix
 shell. To help you get started, we have already implemented the less interesting functions. Your assignment
 is to complete the remaining empty functions listed below. As a sanity check for you, we’ve listed the
 approximate number of lines of code for each of these functions in our reference solution (which includes
 lots of comments).
-• `eval`: Main routine that parses and interprets the command line. [70 lines]
-• `builtin cmd`: Recognizes and interprets the built-in commands: quit, fg, bg, and jobs. [25
+
+-`eval`: Main routine that parses and interprets the command line. [70 lines]
+-`builtin cmd`: Recognizes and interprets the built-in commands: quit, fg, bg, and jobs. [25
 lines]
 1
 • do bgfg: Implements the bg and fg built-in commands. [50 lines]

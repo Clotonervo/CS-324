@@ -16,9 +16,11 @@ Any clarifications and revisions to the assignment will be posted on the course 
 <h4>Hand Out Instructions</h4>
 Start by downloading the file shlab-handout.tar from the LearningSuite assignment page for this
 assignment. Save it to the protected directory (the lab directory) in which you plan to do your work.
-* Type the command `tar xvf shlab-handout.tar` to expand the tarfile.
-* Type the command make to compile and link some test routines.
-* Type your name and BYU netid in the header comment at the top of tsh.c.
+
+-Type the command `tar xvf shlab-handout.tar` to expand the tarfile.
+-Type the command make to compile and link some test routines.
+-Type your name and BYU netid in the header comment at the top of tsh.c.
+
 Looking at the tsh.c (tiny shell) file, you will see that it contains a functional skeleton of a simple Unix
 shell. To help you get started, we have already implemented the less interesting functions. Your assignment
 is to complete the remaining empty functions listed below. As a sanity check for you, we’ve listed the

@@ -1,17 +1,17 @@
 // Compile: gcc -o mandelbrot -fopenmp mandelbrot.c
 
 /*
-  a)
+  a) 4
 
   b) ./mandelbrot 0.27085 0.27100 0.004640 0.004810 1000 8192 pic.ppm
 
-   - 1:
+   - 1: 42.892646
 
-   - 2:
+   - 2: 23.511760
 
-   - 4:
+   - 4: 13.547310
 
-   - 8:
+   - 8: 12.950344
 
 */
 
@@ -42,6 +42,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdint.h>
+#include <omp.h>
+#include <string.h>
 int main(int argc, char* argv[])
 {
 /* Parse the command line arguments. */
@@ -78,7 +80,23 @@ double x, y; /* Coordinates of the current point in the complex plane. */
 double u, v; /* Coordinates of the iterated point. */
 int i,j; /* Pixel counters */
 int k; /* Iteration counter */
+printf("Number of threads= %s\n", getenv("OMP_NUM_THREADS"));
+double start = omp_get_wtime();
 
+char*** list;
+list = calloc(yres, sizeof(char**));
+
+/*-------------------- Create Data Structure --------------*/
+for(int q = 0; q < yres; q++){
+  list[q] = calloc(xres, sizeof(char*));
+    for(int r = 0; r < xres; r++){
+     list[q][r] = calloc(6, sizeof(char));
+  }
+}
+
+/*----------------------- Compute Data --------------------*/
+
+#pragma omp parallel for private(i,j,k,x)
 for (j = 0; j < yres; j++) {
     y = ymax - j * dy;
 for(i = 0; i < xres; i++) {
@@ -99,22 +117,38 @@ for (k = 1; k < maxiter && (u2 + v2 < 4.0); k++) {
 /* compute  pixel color and write it to file */
 if (k >= maxiter) {
 /* interior */
-const unsigned char black[] = {0, 0, 0, 0, 0, 0};
-fwrite (black, 6, 1, fp);
+        list[j][i][0] = 0;
+        list[j][i][1] = 0;
+        list[j][i][2] = 0;
+        list[j][i][3] = 0;
+        list[j][i][4] = 0;
+        list[j][i][5] = 0;
       }
 else {
 /* exterior */
 unsigned char color[6];
-        color[0] = k >> 8;
-        color[1] = k & 255;
-        color[2] = k >> 8;
-        color[3] = k & 255;
-        color[4] = k >> 8;
-        color[5] = k & 255;
-fwrite(color, 6, 1, fp);
-      };
+        list[j][i][0] = k >> 8;
+        list[j][i][1] = k & 255;
+        list[j][i][2] = k >> 8;
+        list[j][i][3] = k & 255;
+        list[j][i][4] = k >> 8;
+        list[j][i][5] = k & 255;
+      }
     }
   }
+
+  double end = omp_get_wtime();
+
+printf("Time for computation: %f\n", end - start);
+
+
+/*-------------------- Write all data to file ----------------*/
+for(int q = 0; q < yres; q++){
+  for(int r = 0; r < xres; r++){
+    fwrite(list[q][r], 6, 1, fp);
+  }
+}
+
 fclose(fp);
 return 0;
 }

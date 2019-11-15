@@ -5,13 +5,13 @@
 
   b) ./mandelbrot 0.27085 0.27100 0.004640 0.004810 1000 8192 pic.ppm
 
-   - 1: 42.892646
+   - 1: 40.576540
 
-   - 2: 23.511760
+   - 2: 21.348374
 
-   - 4: 13.547310
+   - 4: 11.166523
 
-   - 8: 12.950344
+   - 8: 10.948165
 
 */
 
@@ -81,7 +81,6 @@ double u, v; /* Coordinates of the iterated point. */
 int i,j; /* Pixel counters */
 int k; /* Iteration counter */
 printf("Number of threads= %s\n", getenv("OMP_NUM_THREADS"));
-double start = omp_get_wtime();
 
 char*** list;
 list = calloc(yres, sizeof(char**));
@@ -95,6 +94,7 @@ for(int q = 0; q < yres; q++){
 }
 
 /*----------------------- Compute Data --------------------*/
+double start = omp_get_wtime();
 
 #pragma omp parallel for private(i,j,k,x)
 for (j = 0; j < yres; j++) {

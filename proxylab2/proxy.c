@@ -27,21 +27,33 @@ static const char *version_hdr = " HTTP/1.0";
 static const char *colon = ":";
 
 /* ------------------------------------- Cache functions -------------------------------------------------*/
+sem_t write_sem;
+sem_t count_sem;
+int readers;
+
 typedef struct {
     char* url;
     char* response;
+    char* size;
     struct cache_node* next;
     struct cache_node* previous;
-}cache_node;
+} cache_node;
 
 typedef struct {
     int cache_size;
     int number_of_objects;
-    struct cache_node* head;
-}cache_list;
+    cache_node* head;
+} cache_list;
+
+cache_list *head_cache;
+
 
 void cache_init(cache_list *cache) 
 {
+    sem_init(&write_sem, 0, 1);
+    sem_init(&count_sem, 0, 1);
+    readers = 0;
+
     cache->cache_size = 0;
     cache->number_of_objects = 0;
     cache->head = NULL;
@@ -49,8 +61,65 @@ void cache_init(cache_list *cache)
 
 void add_cache(cache_list *cache, char* url, char* content, int size)
 {
+    P(&write_sem);
     cache->cache_size += size;
-    cache_node* curr = cache->head;
+    cache->number_of_objects += 1;
+
+    cache_node* new_node = malloc(sizeof(cache_node));
+    new_node->next = cache->head;
+    new_node->url = malloc(strlen(url) * sizeof(char));
+    new_node->response = malloc(size);
+    new_node->size = size;
+    strcpy(new_node->url, url);
+    memcpy(new_node->response, content, size);
+
+    cache->head = new_node;
+
+    V(&write_sem);
+}
+
+int cache_search(cache_list *cache, char* url)
+{
+    P(&count_sem);
+    readers++;
+    if (readers == 1) 
+        P(&write_sem);
+    V(&count_sem);        
+
+    cache_node *current;
+    int result = 0;
+
+    for (current = cache->head; current != NULL; current = current->next) {
+        if (!strcmp(current->url, url)) {
+            result = 1; 
+        }
+    }
+
+    P(&count_sem);
+    readers--;
+    if (readers == 0) 
+        V(&write_sem); 
+    V(&count_sem);
+
+    return result;
+}
+
+int get_data_from_cache(cache_list *cache, char* url, char* response)
+{
+    P(&write_sem);
+    cache_node *current;
+    int result = 0;
+
+    while(current){
+        if (!strcmp(current->url, url)) { 
+            memcpy(response, current->response, current->size);
+            result = current->size;
+            break;
+        }
+        current = current->next;
+    }
+    V(&write_sem); 
+    return result;
 }
 
 
@@ -421,31 +490,36 @@ void run_proxy(int connfd)
 
     if (req_val == 0){
         char new_request[MAXBUF] = {0};
-        // char* p = new_request;
 
-        strncat(new_request, type, BUFSIZ);
-        strncat(new_request, " ", 2);
-        strncat(new_request, resource, BUFSIZ);
-        strncat(new_request, version_hdr, BUFSIZ);
-        strncat(new_request, end_line,BUFSIZ);
-        strncat(new_request, host_init, BUFSIZ);
-        strncat(new_request, host, BUFSIZ);
-        strncat(new_request, colon, BUFSIZ);
-        strncat(new_request, port, BUFSIZ);
-        strncat(new_request, end_line, BUFSIZ);
-        strncat(new_request, user_agent_hdr, BUFSIZ);
-        strncat(new_request, accept_line_hdr, BUFSIZ);
-        strncat(new_request, connection_hdr, BUFSIZ);
-        strncat(new_request, proxy_connection_hdr, BUFSIZ);
-        strncat(new_request, end_line, BUFSIZ);
-        // printf("new_request: \n\n%s\n", p);
+        if(cache_search(head_cache,url)){
+            
+        }
+        else{
+            // char* p = new_request;
 
+            strncat(new_request, type, BUFSIZ);
+            strncat(new_request, " ", 2);
+            strncat(new_request, resource, BUFSIZ);
+            strncat(new_request, version_hdr, BUFSIZ);
+            strncat(new_request, end_line,BUFSIZ);
+            strncat(new_request, host_init, BUFSIZ);
+            strncat(new_request, host, BUFSIZ);
+            strncat(new_request, colon, BUFSIZ);
+            strncat(new_request, port, BUFSIZ);
+            strncat(new_request, end_line, BUFSIZ);
+            strncat(new_request, user_agent_hdr, BUFSIZ);
+            strncat(new_request, accept_line_hdr, BUFSIZ);
+            strncat(new_request, connection_hdr, BUFSIZ);
+            strncat(new_request, proxy_connection_hdr, BUFSIZ);
+            strncat(new_request, end_line, BUFSIZ);
+            // printf("new_request: \n\n%s\n", p);
+
+            
+        }
         int request_length = 0;
         request_length = strlen(new_request);
-
         char request_to_forward[102400];
-        int response_length = create_send_socket(sfd, port, host, new_request, request_length, request_to_forward);
-        forward_bytes_to_client(connfd, request_to_forward, response_length);
+        int response_length = create_send_socket(sfd, port, host, new_request, request_length, request_to_forward);            forward_bytes_to_client(connfd, request_to_forward, response_length);
     }
     else {
         // simply close connection and move on
@@ -506,7 +580,7 @@ void make_client(int port)
 
     Pthread_create(&tid, NULL, logger, NULL);
 
-    // Create a Logger thread as well
+    cache_init(head_cache);
 
     while (1) {
         clientlen = sizeof(struct sockaddr_storage);

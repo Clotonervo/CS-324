@@ -13,6 +13,7 @@
 #define MAX_OBJECT_SIZE 102400
 #define NTHREADS 30
 #define SBUFSIZE 500
+#define LOGSIZE 500
 
 /* You won't lose style points for including this long line in your code */
 static const char *user_agent_hdr = "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:10.0.3) Gecko/20120305 Firefox/10.0.3\r\n";
@@ -39,13 +40,18 @@ typedef struct {
     struct cache_node* head;
 }cache_list;
 
-void cache_init(cache_list *cache) {
+void cache_init(cache_list *cache) 
+{
     cache->cache_size = 0;
     cache->number_of_objects = 0;
     cache->head = NULL;
 }
 
-void add_cache(cache_list *cache, char* url);
+void add_cache(cache_list *cache, char* url, char* content, int size)
+{
+    cache->cache_size += size;
+    cache_node* curr = cache->head;
+}
 
 
 /* ------------------------------------- Thread pool code -------------------------------------------------*/
@@ -58,7 +64,6 @@ typedef struct {
     sem_t slots;       /* Counts available slots */
     sem_t items;       /* Counts available items */
 } sbuf_t;
-
 
 sbuf_t sbuf;
 
@@ -100,9 +105,21 @@ int sbuf_remove(sbuf_t *sp)
 
 /* ------------------------------------- Logger code -------------------------------------------------*/
 FILE *logfile;
-sem_t log_sem;
 
-void print_to_log(char* url)
+typedef struct {
+    char **buf;          /* Buffer array */         
+    int n;             /* Maximum number of slots */
+    int front;         /* buf[(front+1)%n] is first item */
+    int rear;          /* buf[rear%n] is last item */
+    sem_t mutex;       /* Protects accesses to buf */
+    sem_t slots;       /* Counts available slots */
+    sem_t items;       /* Counts available items */
+} log_t;
+
+log_t log_buf;
+
+
+void print_to_log_file(char* url)
 {
     char message[MAXBUF] = {0};
     char* p = message;
@@ -115,11 +132,60 @@ void print_to_log(char* url)
     strcat(message, ">|  ");
     strcat(message, url);
 
-    P(&log_sem);
     fprintf(logfile, "%s", p);
     fflush(logfile);
-    V(&log_sem);
 }
+
+void log_init(log_t *log, int n)
+{
+    log->buf = calloc(n, sizeof(int)); 
+    log->n = n;                       /* Buffer holds max of n items */
+    log->front = log->rear = 0;        /* Empty buffer iff front == rear */
+    Sem_init(&log->mutex, 0, 1);      /* Binary semaphore for locking */
+    Sem_init(&log->slots, 0, n);      /* Initially, buf has n empty slots */
+    Sem_init(&log->items, 0, 0);      /* Initially, buf has zero data items */
+}
+
+void log_deinit(log_t *log)
+{
+    free(log->buf);
+}
+
+void log_insert(log_t *log, char* item)
+{
+    P(&log->slots);                          /* Wait for available slot */
+    P(&log->mutex);                         /* Lock the buffer */
+    log->buf[(++log->rear)%(log->n)] = calloc(strlen(item), sizeof(char*));  
+    strcpy(log->buf[(log->rear)%(log->n)], item);           /* Insert the item */
+    V(&log->mutex);                          /* Unlock the buffer */
+    V(&log->items);                          /* Announce available item */
+}
+
+char* log_remove(log_t *log)
+{
+    char* item;
+    P(&log->items);                          /* Wait for available item */
+    P(&log->mutex);                          /* Lock the buffer */
+    item = log->buf[(++log->front)%(log->n)];  /* Remove the item */
+    V(&log->mutex);                          /* Unlock the buffer */
+    V(&log->slots);                          /* Announce available slot */
+    return item;
+}
+
+void* logger(void* vargp)
+{
+    Pthread_detach(pthread_self());
+    logfile = fopen("proxy_log.txt", "w");
+    log_init(&log_buf, LOGSIZE);
+
+    while(1){
+        char* url = log_remove(&log_buf);
+        print_to_log_file(url);
+        free(url);
+    }
+    // log_deinit(&log_buf);
+}
+
 
 /*---------------------------------------- Proxy code -----------------------------------------*/
 int sfd;
@@ -350,8 +416,8 @@ void run_proxy(int connfd)
     // printf("resource = %s\n", resource);
     // printf("version = %s\n\n", version);
     make_url(url, protocal, port, host, resource);
-
-    print_to_log(url);
+    // print_to_log_file(url);
+    log_insert(&log_buf, url);
 
     if (req_val == 0){
         char new_request[MAXBUF] = {0};
@@ -418,7 +484,6 @@ void *thread(void *vargp)
     while(1){
         int connection = sbuf_remove(&sbuf);
         run_proxy(connection);
-        printf("closing socket\n");
         Close(connection);
     }
     return NULL;
@@ -438,6 +503,8 @@ void make_client(int port)
     for (int i = 1; i < NTHREADS; i++)  { /* Create worker threads */
         Pthread_create(&tid, NULL, thread, NULL);
     }
+
+    Pthread_create(&tid, NULL, logger, NULL);
 
     // Create a Logger thread as well
 
@@ -461,8 +528,6 @@ int main(int argc, char *argv[])
     	exit(0);
     }
     signal(SIGPIPE, SIG_IGN);
-    logfile = fopen("proxy_log.txt", "a");
-    sem_init(&log_sem, 0, 1);
 
     port = atoi(argv[1]);
     make_client(port);

@@ -11,6 +11,8 @@
 /* Recommended max cache and object sizes */
 #define MAX_CACHE_SIZE 1049000
 #define MAX_OBJECT_SIZE 102400
+#define NTHREADS 15
+#define SBUFSIZE 500
 
 /* You won't lose style points for including this long line in your code */
 static const char *user_agent_hdr = "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:10.0.3) Gecko/20120305 Firefox/10.0.3\r\n";
@@ -22,11 +24,119 @@ static const char *end_line = "\r\n";
 static const char *default_port = "80";
 static const char *version_hdr = " HTTP/1.0";
 static const char *colon = ":";
-void echo(int connfd);
+
+/* ------------------------------------- Cache functions -------------------------------------------------*/
+typedef struct {
+    char* url;
+    char* response;
+    cache_node* next;
+    cache_node* previous;
+}cache_node;
+
+typedef struct {
+    int cache_size;
+    int number_of_objects;
+    cache_node* head;
+}cache_list;
+
+void cache_init(cache_list *cache) {
+    cache->cache_size = 0;
+    cache->number_of_objects = 0;
+    cache->head = NULL;
+}
+
+void add_cache(cache_list *cache, char* url);
 
 
+/* ------------------------------------- Thread pool code -------------------------------------------------*/
+typedef struct {
+    int *buf;          /* Buffer array */         
+    int n;             /* Maximum number of slots */
+    int front;         /* buf[(front+1)%n] is first item */
+    int rear;          /* buf[rear%n] is last item */
+    sem_t mutex;       /* Protects accesses to buf */
+    sem_t slots;       /* Counts available slots */
+    sem_t items;       /* Counts available items */
+} sbuf_t;
+
+
+sbuf_t sbuf;
+
+
+void sbuf_init(sbuf_t *sp, int n)
+{
+    sp->buf = calloc(n, sizeof(int)); 
+    sp->n = n;                       /* Buffer holds max of n items */
+    sp->front = sp->rear = 0;        /* Empty buffer iff front == rear */
+    Sem_init(&sp->mutex, 0, 1);      /* Binary semaphore for locking */
+    Sem_init(&sp->slots, 0, n);      /* Initially, buf has n empty slots */
+    Sem_init(&sp->items, 0, 0);      /* Initially, buf has zero data items */
+}
+
+void sbuf_deinit(sbuf_t *sp)
+{
+    free(sp->buf);
+}
+
+void sbuf_insert(sbuf_t *sp, int item)
+{
+    P(&sp->slots);                          /* Wait for available slot */
+    P(&sp->mutex);                          /* Lock the buffer */
+    sp->buf[(++sp->rear)%(sp->n)] = item;   /* Insert the item */
+    V(&sp->mutex);                          /* Unlock the buffer */
+    V(&sp->items);                          /* Announce available item */
+}
+
+int sbuf_remove(sbuf_t *sp)
+{
+    int item;
+    P(&sp->items);                          /* Wait for available item */
+    P(&sp->mutex);                          /* Lock the buffer */
+    item = sp->buf[(++sp->front)%(sp->n)];  /* Remove the item */
+    V(&sp->mutex);                          /* Unlock the buffer */
+    V(&sp->slots);                          /* Announce available slot */
+    return item;
+}
+
+/* ------------------------------------- Logger code -------------------------------------------------*/
+FILE *logfile;
+sem_t log_sem;
+
+void print_to_log(char* host, char* port, char* resources, char* protocal)
+{
+    char message[MAXBUF] = {0};
+    char* p = message;
+    time_t now;
+    char time_str[MAXLINE];
+
+    now = time(NULL);
+    strftime(time_str, MAXLINE, "%d %b %H:%M:%S ", localtime(&now));
+    strcpy(message, time_str);
+    strcat(message, ">|  ");
+    strcat(message, protocal);
+    strcat(message, "://");
+    strcat(message, host);
+    if(strcmp(port, "80")){
+        strcat(message, colon);
+        strcat(message, port);
+    }
+    strcat(message, resources);
+    strcat(message, "\n\0");
+
+    P(&log_sem);
+    fprintf(logfile, "%s", p);
+    fflush(logfile);
+    V(&log_sem);
+}
+
+/*---------------------------------------- Proxy code -----------------------------------------*/
 int sfd;
 struct sockaddr_in ip4addr;
+
+char* make_url(char* url, char* protocal, char* port, char* host, char* resource)
+{
+    char final_url[MAXLINE] = {0};
+}
 
 void parse_host_and_port(char* request, char* host, char* port)
 {
@@ -175,7 +285,7 @@ int create_send_socket(int sfd, char* port, char* host, char* request, int lengt
             break;
         }
     }
-    sleep(1);
+    // sleep(1);
     return total_read;
 }
 
@@ -211,10 +321,8 @@ void send_request(int sfd, char* request, int length)
     return;
 }
 
-void *thread(void *vargp) 
+void run_proxy(int connfd) 
 {  
-    int connfd = *((int *)vargp);
-    Pthread_detach(pthread_self()); 
     char request[MAXBUF] = {0};
     char type[BUFSIZ] = {0};
     char host[BUFSIZ];
@@ -235,6 +343,8 @@ void *thread(void *vargp)
     // printf("port = %s\n", port);
     // printf("resource = %s\n", resource);
     // printf("version = %s\n\n", version);
+
+    print_to_log(host, port, resource, protocal);
 
     if (req_val == 0){
         char new_request[MAXBUF] = {0};
@@ -268,9 +378,7 @@ void *thread(void *vargp)
         // simply close connection and move on
     }
 
-    Free(vargp);                    
-    Close(connfd);
-    return NULL;
+    return;
 }
 
 int make_listening_socket(int port)
@@ -297,23 +405,46 @@ int make_listening_socket(int port)
     return sfd;
 }
 
+void *thread(void *vargp)
+{
+    Pthread_detach(pthread_self());
+    while(1){
+        int connection = sbuf_remove(&sbuf);
+        printf("thread = %d\n", vargp);
+        run_proxy(connection);
+        printf("closing socket\n");
+        Close(connection);
+    }
+    return NULL;
+}
+
+
 void make_client(int port)
 {
-    int listenfd, *connfdp;
+    int listenfd, connfdp;
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
     pthread_t tid; 
 
     listenfd = make_listening_socket(port);
+    sbuf_init(&sbuf, SBUFSIZE);
+
+    for (int i = 1; i < NTHREADS; i++)  { /* Create worker threads */
+        Pthread_create(&tid, NULL, thread, (void*)i);
+    }
+
+    // Create a Logger thread as well
+
     while (1) {
         clientlen = sizeof(struct sockaddr_storage);
-        connfdp = Malloc(sizeof(int)); 
-        if ((*connfdp = accept(listenfd, (SA *) &clientaddr, &clientlen)) < 0){
+        if ((connfdp = accept(listenfd, (SA *) &clientaddr, &clientlen)) < 0){
             perror("Error with accepting connection!\n");
             break;
         }
-        Pthread_create(&tid, NULL, thread, connfdp);
+        sbuf_insert(&sbuf, connfdp);
     }
+    sbuf_deinit(&sbuf);
+    Close(listenfd);
 }
 
 int main(int argc, char *argv[])
@@ -324,6 +455,8 @@ int main(int argc, char *argv[])
     	exit(0);
     }
     signal(SIGPIPE, SIG_IGN);
+    logfile = fopen("proxy_log.txt", "a");
+    sem_init(&log_sem, 0, 1);
 
     port = atoi(argv[1]);
     make_client(port);

@@ -11,7 +11,7 @@
 /* Recommended max cache and object sizes */
 #define MAX_CACHE_SIZE 1049000
 #define MAX_OBJECT_SIZE 102400
-#define NTHREADS 15
+#define NTHREADS 30
 #define SBUFSIZE 500
 
 /* You won't lose style points for including this long line in your code */
@@ -29,14 +29,14 @@ static const char *colon = ":";
 typedef struct {
     char* url;
     char* response;
-    cache_node* next;
-    cache_node* previous;
+    struct cache_node* next;
+    struct cache_node* previous;
 }cache_node;
 
 typedef struct {
     int cache_size;
     int number_of_objects;
-    cache_node* head;
+    struct cache_node* head;
 }cache_list;
 
 void cache_init(cache_list *cache) {
@@ -102,26 +102,18 @@ int sbuf_remove(sbuf_t *sp)
 FILE *logfile;
 sem_t log_sem;
 
-void print_to_log(char* host, char* port, char* resources, char* protocal)
+void print_to_log(char* url)
 {
     char message[MAXBUF] = {0};
     char* p = message;
     time_t now;
-    char time_str[MAXLINE];
+    char time_str[MAXLINE] = {0};
 
     now = time(NULL);
     strftime(time_str, MAXLINE, "%d %b %H:%M:%S ", localtime(&now));
     strcpy(message, time_str);
     strcat(message, ">|  ");
-    strcat(message, protocal);
-    strcat(message, "://");
-    strcat(message, host);
-    if(strcmp(port, "80")){
-        strcat(message, colon);
-        strcat(message, port);
-    }
-    strcat(message, resources);
-    strcat(message, "\n\0");
+    strcat(message, url);
 
     P(&log_sem);
     fprintf(logfile, "%s", p);
@@ -133,9 +125,22 @@ void print_to_log(char* host, char* port, char* resources, char* protocal)
 int sfd;
 struct sockaddr_in ip4addr;
 
-char* make_url(char* url, char* protocal, char* port, char* host, char* resource)
+void make_url(char* url, char* protocal, char* port, char* host, char* resource)
 {
     char final_url[MAXLINE] = {0};
+    char* p = final_url;
+
+    strcpy(final_url, protocal);
+    strcat(final_url, "://");
+    strcat(final_url, host);
+    if(strcmp(port, "80")){
+        strcat(final_url, colon);
+        strcat(final_url, port);
+    }
+    strcat(final_url, resource);
+    strcat(final_url, "\n\0");
+
+    strcpy(url, p);
 }
 
 void parse_host_and_port(char* request, char* host, char* port)
@@ -330,6 +335,7 @@ void run_proxy(int connfd)
     char resource[BUFSIZ] = {0};
     char protocal[BUFSIZ] = {0};
     char version[BUFSIZ] = {0};
+    char url[BUFSIZ] = {0};
     int sfd = 0;
     int req_val = 0;
 
@@ -343,8 +349,9 @@ void run_proxy(int connfd)
     // printf("port = %s\n", port);
     // printf("resource = %s\n", resource);
     // printf("version = %s\n\n", version);
+    make_url(url, protocal, port, host, resource);
 
-    print_to_log(host, port, resource, protocal);
+    print_to_log(url);
 
     if (req_val == 0){
         char new_request[MAXBUF] = {0};
@@ -410,7 +417,6 @@ void *thread(void *vargp)
     Pthread_detach(pthread_self());
     while(1){
         int connection = sbuf_remove(&sbuf);
-        printf("thread = %d\n", vargp);
         run_proxy(connection);
         printf("closing socket\n");
         Close(connection);
@@ -430,7 +436,7 @@ void make_client(int port)
     sbuf_init(&sbuf, SBUFSIZE);
 
     for (int i = 1; i < NTHREADS; i++)  { /* Create worker threads */
-        Pthread_create(&tid, NULL, thread, (void*)i);
+        Pthread_create(&tid, NULL, thread, NULL);
     }
 
     // Create a Logger thread as well

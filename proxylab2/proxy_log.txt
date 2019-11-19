@@ -1,22 +1,21 @@
-18 Nov 18:35:24 >|http://localhost:28421/nop-file.txt
-18 Nov 18:35:27 >|http://localhost:26846/home.html?4
-18 Nov 18:35:27 >|http://localhost:26846/home.html?7
-18 Nov 18:35:27 >|http://localhost:26846/home.html?9
-18 Nov 18:35:28 >|http://localhost:26846/home.html?3
-18 Nov 18:35:28 >|http://localhost:26846/home.html?1
-18 Nov 18:35:28 >|http://localhost:26846/home.html?5
-18 Nov 18:35:28 >|http://localhost:26846/cgi-bin/slow?1&4096&1
-18 Nov 18:35:28 >|http://localhost:26846/cgi-bin/slow?1&4096&1
-18 Nov 18:35:28 >|http://localhost:26846/cgi-bin/slow?1&4096&1
-18 Nov 18:35:28 >|http://localhost:26846/cgi-bin/slow?1&4096&1
-18 Nov 18:35:28 >|http://localhost:26846/cgi-bin/slow?1&4096&1
-18 Nov 18:35:28 >|http://localhost:26846/cgi-bin/slow?1&4096&1
-18 Nov 18:35:28 >|http://localhost:26846/cgi-bin/slow?1&4096&1
-18 Nov 18:35:28 >|http://localhost:26846/cgi-bin/slow?1&4096&1
-18 Nov 18:35:28 >|http://localhost:26846/cgi-bin/slow?1&4096&1
-18 Nov 18:35:28 >|http://localhost:26846/cgi-bin/slow?1&4096&1
-18 Nov 18:35:29 >|http://localhost:26846/home.html?6
-18 Nov 18:35:29 >|http://localhost:26846/home.html?10
-18 Nov 18:35:29 >|http://localhost:26846/home.html?8
-18 Nov 18:35:30 >|http://localhost:26846/home.html?2
-18 Nov 18:35:32 >|http://localhost:23515/tiny.c
+19 Nov 09:45:14 >|  http://localhost:27809/nop-file.txt
+19 Nov 09:45:17 >|  http://localhost:23374/home.html?3
+19 Nov 09:45:17 >|  http://localhost:23374/home.html?8
+19 Nov 09:45:17 >|  http://localhost:23374/home.html?7
+19 Nov 09:45:17 >|  http://localhost:23374/home.html?5
+19 Nov 09:45:17 >|  http://localhost:23374/home.html?9
+19 Nov 09:45:17 >|  http://localhost:23374/home.html?1
+19 Nov 09:45:17 >|  http://localhost:23374/home.html?4
+19 Nov 09:45:17 >|  http://localhost:23374/home.html?6
+19 Nov 09:45:17 >|  http://localhost:23374/home.html?2
+19 Nov 09:45:17 >|  http://localhost:23374/home.html?10
+19 Nov 09:45:18 >|  http://localhost:23374/cgi-bin/slow?1&4096&1
+19 Nov 09:45:18 >|  http://localhost:23374/cgi-bin/slow?1&4096&1
+19 Nov 09:45:18 >|  http://localhost:23374/cgi-bin/slow?1&4096&1
+19 Nov 09:45:18 >|  http://localhost:23374/cgi-bin/slow?1&4096&1
+19 Nov 09:45:18 >|  http://localhost:23374/cgi-bin/slow?1&4096&1
+19 Nov 09:45:18 >|  http://localhost:23374/cgi-bin/slow?1&4096&1
+19 Nov 09:45:18 >|  http://localhost:23374/cgi-bin/slow?1&4096&1
+19 Nov 09:45:18 >|  http://localhost:23374/cgi-bin/slow?1&4096&1
+19 Nov 09:45:18 >|  http://localhost:23374/cgi-bin/slow?1&4096&1
+19 Nov 09:45:18 >|  http://localhost:23374/cgi-bin/slow?1&4096&1

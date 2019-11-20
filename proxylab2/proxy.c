@@ -62,6 +62,14 @@ void cache_init(cache_list *cache)
 
 void add_cache(cache_list *cache, char* url, char* content, int size)
 {
+    if (size > MAX_OBJECT_SIZE){
+        return;
+    }
+    
+    if (cache->cache_size + size > MAX_CACHE_SIZE){
+        return;
+    }
+
     P(&w_sem);
     cache->cache_size += size;
     cache->number_of_objects += 1;

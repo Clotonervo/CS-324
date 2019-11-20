@@ -27,9 +27,9 @@ static const char *version_hdr = " HTTP/1.0";
 static const char *colon = ":";
 
 /* ------------------------------------- Cache functions -------------------------------------------------*/
-sem_t write_sem;
+sem_t w_sem;
 sem_t count_sem;
-int readers;
+int readcnt;
 
 typedef struct {
     char* url;
@@ -50,9 +50,9 @@ cache_list head_cache;
 
 void cache_init(cache_list *cache) 
 {
-    sem_init(&write_sem, 0, 1);
+    sem_init(&w_sem, 0, 1);
     sem_init(&count_sem, 0, 1);
-    readers = 0;
+    readcnt = 0;
 
     cache->cache_size = 0;
     cache->number_of_objects = 0;
@@ -61,8 +61,7 @@ void cache_init(cache_list *cache)
 
 void add_cache(cache_list *cache, char* url, char* content, int size)
 {
-    printf("In cache add\n");
-    P(&write_sem);
+    P(&w_sem);
     cache->cache_size += size;
     cache->number_of_objects += 1;
 
@@ -76,32 +75,31 @@ void add_cache(cache_list *cache, char* url, char* content, int size)
 
     cache->head = new_node;
 
-    V(&write_sem);
+    V(&w_sem);
 }
 
 int cache_search(cache_list *cache, char* url)
 {
-    printf("in cache search\n"); 
     P(&count_sem);
-    readers++;
-    if (readers == 1) 
-        P(&write_sem);
+    readcnt++;
+    if (readcnt == 1) 
+        P(&w_sem);
     V(&count_sem);        
 
     cache_node *current;
     int result = 0;
 
     for (current = cache->head; current != NULL; current = current->next) {
-        printf("current = %s\n", current->url);
+        // printf("current = %s\n", current->url);
         if (!strcmp(current->url, url)) {
             result = 1; 
         }
     }
 
     P(&count_sem);
-    readers--;
-    if (readers == 0) 
-        V(&write_sem); 
+    readcnt--;
+    if (readcnt == 0) 
+        V(&w_sem); 
     V(&count_sem);
 
     return result;
@@ -109,8 +107,8 @@ int cache_search(cache_list *cache, char* url)
 
 int get_data_from_cache(cache_list *cache, char* url, char* response)
 {
-    printf("Getting data from cache\n");
-    P(&write_sem);
+    // printf("Getting data from cache\n");
+    P(&w_sem);
     cache_node *current = cache->head;
     int result = 0;
 
@@ -123,7 +121,7 @@ int get_data_from_cache(cache_list *cache, char* url, char* response)
         }
         current = current->next;
     }
-    V(&write_sem); 
+    V(&w_sem); 
     return result;
 }
 
@@ -494,17 +492,19 @@ void run_proxy(int connfd)
     // print_to_log_file(url);
     log_insert(&log_buf, url);
 
+
     if (req_val == 0){
         int response_length = 0;
-        // int is_in_cache = cache_search(&head_cache, url);
-        // printf("url = %s\n", url);
-        // printf("in cache = %d\n", 0);
+        int is_in_cache = cache_search(&head_cache, url);
+        char request_to_forward[MAX_OBJECT_SIZE];
+        printf("url = %s\n", url);
+        printf("in cache = %d\n", 0);
 
-        // if(0){
-        //     printf("Is in cache\n");
-        //     // response_length = get_data_from_cache(&head_cache, url, request_to_forward);
-        // }
-        // else{
+        if(is_in_cache){
+            printf("Is in cache\n");
+            response_length = get_data_from_cache(&head_cache, url, request_to_forward);
+        }
+        else{
             // char* p = new_request;
             char new_request[MAXBUF] = {0};
 
@@ -527,13 +527,12 @@ void run_proxy(int connfd)
             
             int request_length = 0;
             request_length = strlen(new_request);
-            char request_to_forward[MAX_OBJECT_SIZE];
             response_length = create_send_socket(sfd, port, host, new_request, request_length, request_to_forward); 
-        // }
+        }
 
-        // if(0){
-        //     // add_cache(&head_cache, url, request_to_forward, response_length);
-        // }           
+        if(!is_in_cache){
+            add_cache(&head_cache, url, request_to_forward, response_length);
+        }           
         forward_bytes_to_client(connfd, request_to_forward, response_length);
     }
     else {
@@ -588,10 +587,10 @@ void make_client(int port)
 
     listenfd = make_listening_socket(port);
     sbuf_init(&sbuf, SBUFSIZE);
-    // cache_init(&head_cache);
+    cache_init(&head_cache);
 
 
-    for (int i = 1; i < NTHREADS; i++)  { /* Create worker threads */
+    for (int i = 1; i < NTHREADS; i++)  { 
         Pthread_create(&tid, NULL, thread, NULL);
     }
 

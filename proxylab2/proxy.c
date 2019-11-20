@@ -32,10 +32,10 @@ sem_t w_sem;
 sem_t count_sem;
 int readcnt;
 
-typedef struct {
+typedef struct cache_node{
     char* url;
     char* response;
-    char* size;
+    int size;
     struct cache_node* next;
     struct cache_node* previous;
 } cache_node;
@@ -43,7 +43,7 @@ typedef struct {
 typedef struct {
     int cache_size;
     int number_of_objects;
-    cache_node* head;
+    struct cache_node* head;
 } cache_list;
 
 cache_list head_cache;
@@ -110,7 +110,7 @@ int get_data_from_cache(cache_list *cache, char* url, char* response)
 {
     // printf("Getting data from cache\n");
     P(&w_sem);
-    cache_node *current = cache->head;
+    struct cache_node *current = cache->head;
     int result = 0;
 
     while(current){
@@ -128,11 +128,11 @@ int get_data_from_cache(cache_list *cache, char* url, char* response)
 
 void free_cache(cache_list *cache)
 {
-    cache_node *current = cache->head;
+    struct cache_node *current = cache->head;
     while(current){
         free(current->url);
         free(current->response);
-        cache_node *temp = current->next;
+        struct cache_node *temp = current->next;
         free(current);
         current = temp;
     }

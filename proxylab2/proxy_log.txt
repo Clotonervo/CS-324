@@ -1,4 +1,2 @@
-19 Nov 21:39:56 >|  http://localhost:12621/tiny.c
-19 Nov 21:39:57 >|  http://localhost:12621/home.html
-19 Nov 21:39:58 >|  http://localhost:12621/csapp.c
-19 Nov 21:39:59 >|  http://localhost:12621/home.html
+19 Nov 22:01:30 >|  http://localhost:32271/nop-file.txt
+In sigint handler

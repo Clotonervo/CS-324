@@ -259,7 +259,7 @@ char* log_remove(log_t *log)
 
 void* logger(void* vargp)
 {
-    Pthread_detach(pthread_self());
+    // Pthread_detach(pthread_self());
     thread_ids[0] = pthread_self();
     logfile = fopen("proxy_log.txt", "w");
     log_init(&log_buf, LOGSIZE);
@@ -277,7 +277,10 @@ void sigint_handler(int sig)
 {
     fprintf(logfile, "In sigint handler\n");
     for(int i = 0; i < NTHREADS; i++){
-        pthread_cancel(thread_ids[i]);
+        if(pthread_self() != thread_ids[i]){
+            pthread_cancel(thread_ids[i]);
+            pthread_join(thread_ids[i], NULL);
+        }
     }
     sbuf_deinit(&sbuf);
     log_deinit(&log_buf);
@@ -596,9 +599,8 @@ int make_listening_socket(int port)
 
 void *thread(void *vargp)
 {
-    Pthread_detach(pthread_self());
-    long* index = (long)vargp;
-    // thread_ids[*index] = pthread_self;
+    // Pthread_detach(pthread_self());
+
     while(1){
         int connection = sbuf_remove(&sbuf);
         run_proxy(connection);
@@ -615,17 +617,12 @@ void make_client(int port)
     struct sockaddr_storage clientaddr;
     pthread_t tid;
 
-
-
     listenfd = make_listening_socket(port);
     sbuf_init(&sbuf, SBUFSIZE);
     cache_init(&head_cache);
 
-    int indexes[NTHREADS];
-
     for (int i = 1; i < NTHREADS; i++)  { 
-        indexes[i] = i;
-        Pthread_create(&tid, NULL, thread, (void*) &indexes[i]);
+        Pthread_create(&tid, NULL, thread, NULL);
         thread_ids[i] = tid;
     }
 

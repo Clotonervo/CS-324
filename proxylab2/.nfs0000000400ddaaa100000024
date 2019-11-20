@@ -1,7 +1,0 @@
-19 Nov 21:36:50 >|  http://localhost:29796/home.html
-19 Nov 21:36:51 >|  http://localhost:29796/csapp.c
-19 Nov 21:36:52 >|  http://localhost:29796/tiny.c
-19 Nov 21:36:53 >|  http://localhost:29796/godzilla.jpg
-19 Nov 21:36:54 >|  http://localhost:29796/cgi-bin/slow?1&4096
-19 Nov 21:37:00 >|  http://localhost:29796/tiny
-In sigint handler

@@ -25,6 +25,7 @@ static const char *end_line = "\r\n";
 static const char *default_port = "80";
 static const char *version_hdr = " HTTP/1.0";
 static const char *colon = ":";
+pthread_t thread_ids[NTHREADS + 1] = {0};
 
 /* ------------------------------------- Cache functions -------------------------------------------------*/
 sem_t w_sem;
@@ -123,6 +124,18 @@ int get_data_from_cache(cache_list *cache, char* url, char* response)
     }
     V(&w_sem); 
     return result;
+}
+
+void free_cache(cache_list *cache)
+{
+    cache_node *current = cache->head;
+    while(current){
+        free(current->url);
+        free(current->response);
+        cache_node *temp = current->next;
+        free(current);
+        current = temp;
+    }
 }
 
 
@@ -247,6 +260,7 @@ char* log_remove(log_t *log)
 void* logger(void* vargp)
 {
     Pthread_detach(pthread_self());
+    thread_ids[0] = pthread_self();
     logfile = fopen("proxy_log.txt", "w");
     log_init(&log_buf, LOGSIZE);
 
@@ -255,7 +269,21 @@ void* logger(void* vargp)
         print_to_log_file(url);
         free(url);
     }
-    // log_deinit(&log_buf);
+}
+
+/* ------------------------------------- SIGINT handler -------------------------------------------------*/
+
+void sigint_handler(int sig)  
+{
+    fprintf(logfile, "In sigint handler\n");
+    for(int i = 0; i < NTHREADS; i++){
+        pthread_cancel(thread_ids[i]);
+    }
+    sbuf_deinit(&sbuf);
+    log_deinit(&log_buf);
+    free_cache(&head_cache);
+
+    exit(0);
 }
 
 
@@ -569,6 +597,8 @@ int make_listening_socket(int port)
 void *thread(void *vargp)
 {
     Pthread_detach(pthread_self());
+    long* index = (long)vargp;
+    // thread_ids[*index] = pthread_self;
     while(1){
         int connection = sbuf_remove(&sbuf);
         run_proxy(connection);
@@ -583,18 +613,24 @@ void make_client(int port)
     int listenfd, connfdp;
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
-    pthread_t tid; 
+    pthread_t tid;
+
+
 
     listenfd = make_listening_socket(port);
     sbuf_init(&sbuf, SBUFSIZE);
     cache_init(&head_cache);
 
+    int indexes[NTHREADS];
 
     for (int i = 1; i < NTHREADS; i++)  { 
-        Pthread_create(&tid, NULL, thread, NULL);
+        indexes[i] = i;
+        Pthread_create(&tid, NULL, thread, (void*) &indexes[i]);
+        thread_ids[i] = tid;
     }
 
     Pthread_create(&tid, NULL, logger, NULL);
+    
 
 
     while (1) {
@@ -617,6 +653,7 @@ int main(int argc, char *argv[])
     	exit(0);
     }
     signal(SIGPIPE, SIG_IGN);
+    signal(SIGINT, sigint_handler);
 
     port = atoi(argv[1]);
     make_client(port);

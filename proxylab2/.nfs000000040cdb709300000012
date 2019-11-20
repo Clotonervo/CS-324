@@ -1,0 +1,6 @@
+==9706== Memcheck, a memory error detector
+==9706== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==9706== Using Valgrind-3.13.0 and LibVEX; rerun with -h for copyright info
+==9706== Command: ./proxy 20814
+==9706== Parent PID: 9637
+==9706== 

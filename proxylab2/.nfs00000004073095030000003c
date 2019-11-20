@@ -1,0 +1,6 @@
+==3966== Memcheck, a memory error detector
+==3966== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==3966== Using Valgrind-3.13.0 and LibVEX; rerun with -h for copyright info
+==3966== Command: ./proxy 7846
+==3966== Parent PID: 3903
+==3966== 

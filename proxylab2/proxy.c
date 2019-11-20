@@ -45,7 +45,7 @@ typedef struct {
     cache_node* head;
 } cache_list;
 
-cache_list *head_cache;
+cache_list head_cache;
 
 
 void cache_init(cache_list *cache) 
@@ -61,6 +61,7 @@ void cache_init(cache_list *cache)
 
 void add_cache(cache_list *cache, char* url, char* content, int size)
 {
+    printf("In cache add\n");
     P(&write_sem);
     cache->cache_size += size;
     cache->number_of_objects += 1;
@@ -80,6 +81,7 @@ void add_cache(cache_list *cache, char* url, char* content, int size)
 
 int cache_search(cache_list *cache, char* url)
 {
+    printf("in cache search\n"); 
     P(&count_sem);
     readers++;
     if (readers == 1) 
@@ -90,6 +92,7 @@ int cache_search(cache_list *cache, char* url)
     int result = 0;
 
     for (current = cache->head; current != NULL; current = current->next) {
+        printf("current = %s\n", current->url);
         if (!strcmp(current->url, url)) {
             result = 1; 
         }
@@ -106,11 +109,13 @@ int cache_search(cache_list *cache, char* url)
 
 int get_data_from_cache(cache_list *cache, char* url, char* response)
 {
+    printf("Getting data from cache\n");
     P(&write_sem);
-    cache_node *current;
+    cache_node *current = cache->head;
     int result = 0;
 
     while(current){
+
         if (!strcmp(current->url, url)) { 
             memcpy(response, current->response, current->size);
             result = current->size;
@@ -425,6 +430,7 @@ int create_send_socket(int sfd, char* port, char* host, char* request, int lengt
             break;
         }
     }
+    
     // sleep(1);
     return total_read;
 }
@@ -489,13 +495,18 @@ void run_proxy(int connfd)
     log_insert(&log_buf, url);
 
     if (req_val == 0){
-        char new_request[MAXBUF] = {0};
+        int response_length = 0;
+        // int is_in_cache = cache_search(&head_cache, url);
+        // printf("url = %s\n", url);
+        // printf("in cache = %d\n", 0);
 
-        if(cache_search(head_cache,url)){
-            
-        }
-        else{
+        // if(0){
+        //     printf("Is in cache\n");
+        //     // response_length = get_data_from_cache(&head_cache, url, request_to_forward);
+        // }
+        // else{
             // char* p = new_request;
+            char new_request[MAXBUF] = {0};
 
             strncat(new_request, type, BUFSIZ);
             strncat(new_request, " ", 2);
@@ -513,13 +524,17 @@ void run_proxy(int connfd)
             strncat(new_request, proxy_connection_hdr, BUFSIZ);
             strncat(new_request, end_line, BUFSIZ);
             // printf("new_request: \n\n%s\n", p);
-
             
-        }
-        int request_length = 0;
-        request_length = strlen(new_request);
-        char request_to_forward[102400];
-        int response_length = create_send_socket(sfd, port, host, new_request, request_length, request_to_forward);            forward_bytes_to_client(connfd, request_to_forward, response_length);
+            int request_length = 0;
+            request_length = strlen(new_request);
+            char request_to_forward[MAX_OBJECT_SIZE];
+            response_length = create_send_socket(sfd, port, host, new_request, request_length, request_to_forward); 
+        // }
+
+        // if(0){
+        //     // add_cache(&head_cache, url, request_to_forward, response_length);
+        // }           
+        forward_bytes_to_client(connfd, request_to_forward, response_length);
     }
     else {
         // simply close connection and move on
@@ -573,6 +588,8 @@ void make_client(int port)
 
     listenfd = make_listening_socket(port);
     sbuf_init(&sbuf, SBUFSIZE);
+    // cache_init(&head_cache);
+
 
     for (int i = 1; i < NTHREADS; i++)  { /* Create worker threads */
         Pthread_create(&tid, NULL, thread, NULL);
@@ -580,7 +597,6 @@ void make_client(int port)
 
     Pthread_create(&tid, NULL, logger, NULL);
 
-    cache_init(head_cache);
 
     while (1) {
         clientlen = sizeof(struct sockaddr_storage);

@@ -1,0 +1,6 @@
+==25198== Memcheck, a memory error detector
+==25198== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==25198== Using Valgrind-3.13.0 and LibVEX; rerun with -h for copyright info
+==25198== Command: ./proxy 26729
+==25198== Parent PID: 25135
+==25198== 

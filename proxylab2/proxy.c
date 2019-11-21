@@ -95,15 +95,16 @@ int cache_search(cache_list *cache, char* url)
         P(&w_sem);
     V(&count_sem);        
 
-    cache_node *current;
+    struct cache_node *current = cache->head;
     int result = 0;
 
-    for (current = cache->head; current != NULL; current = current->next) {
-        // printf("current = %s\n", current->url);
-        if (!strcmp(current->url, url)) {
-            result = 1; 
+    while(current){
+        if (!strcmp(current->url, url)) { 
+            result = 1;
         }
+        current = current->next;
     }
+
 
     P(&count_sem);
     readcnt--;

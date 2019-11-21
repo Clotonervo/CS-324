@@ -293,6 +293,7 @@ void sigint_handler(int sig)
     sbuf_deinit(&sbuf);
     log_deinit(&log_buf);
     free_cache(&head_cache);
+    fclose(logfile);
 
     exit(0);
 }

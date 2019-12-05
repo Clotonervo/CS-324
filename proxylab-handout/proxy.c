@@ -34,14 +34,13 @@ static const char *default_port = "80";
 static const char *version_hdr = " HTTP/1.0";
 static const char *colon = ":";
 
-/* ------------------------------------- epoll functions -------------------------------------------------*/
 int efd;
 
 struct request_info{
-    int req_client_fd;
-    int connection_fd;
+    int client_fd;
+    int server_fd;
     int state;
-    char buf[MAXBUF];
+    char buf[MAX_OBJECT_SIZE];
     int total_read_client;
     int total_write_server;
     int written_server;
@@ -49,119 +48,8 @@ struct request_info{
     int written_client;
 };
 
-void init_request_info(struct request_info* info, int listenfd)
-{
-    info->state = READ_REQUEST;
-    info->total_read_client = 0;
-    info->total_write_server = 0;
-    info->read_server = 0;
-    info->written_client = 0;
-    info->written_server = 0;
-    info->req_client_fd = listenfd;
-    return;
-}
+struct request_info all_events[sizeof(struct request_info) * 50];
 
-void read_request_state(request_info* current_event)
-{
-    printf("read_request_state() function called!\n");
-    
-    char request[MAXBUF] = {0};
-    char type[BUFSIZ] = {0};
-    char host[BUFSIZ];
-    char port[BUFSIZ];
-    char resource[BUFSIZ] = {0};
-    char protocal[BUFSIZ] = {0};
-    char version[BUFSIZ] = {0};
-    char url[BUFSIZ] = {0};
-    int sfd = 0;
-    int req_val = 0;
-
-    read_bytes(current_event->connection_fd, current_event->buf);
-
-    req_val = parse_request(request, type, protocal, host, port, resource, version);
-    // printf("request = %s\n", request);
-    // printf("type = %s\n", type);
-    // printf("protocal = %s\n", protocal);
-    // printf("host = %s\n", host);
-    // printf("port = %s\n", port);
-    // printf("resource = %s\n", resource);
-    // printf("version = %s\n\n", version);
-    make_url(url, protocal, port, host, resource);
-    print_to_log_file(url);
-
-
-    if (req_val == 0){
-        int response_length = 0;
-        int is_in_cache = cache_search(&head_cache, url);
-        char request_to_forward[MAX_OBJECT_SIZE];
-        printf("url = %s\n", url);
-        printf("in cache = %d\n", is_in_cache);
-
-        if(is_in_cache){
-            printf("Is in cache\n");
-            response_length = get_data_from_cache(&head_cache, url, request_to_forward);
-            current_event->state = SEND_RESPONSE;
-            return;
-        }
-        else{
-            // char* p = new_request;
-            char new_request[MAXBUF] = {0};
-
-            strncat(new_request, type, BUFSIZ);
-            strncat(new_request, " ", 2);
-            strncat(new_request, resource, BUFSIZ);
-            strncat(new_request, version_hdr, BUFSIZ);
-            strncat(new_request, end_line,BUFSIZ);
-            strncat(new_request, host_init, BUFSIZ);
-            strncat(new_request, host, BUFSIZ);
-            strncat(new_request, colon, BUFSIZ);
-            strncat(new_request, port, BUFSIZ);
-            strncat(new_request, end_line, BUFSIZ);
-            strncat(new_request, user_agent_hdr, BUFSIZ);
-            strncat(new_request, accept_line_hdr, BUFSIZ);
-            strncat(new_request, connection_hdr, BUFSIZ);
-            strncat(new_request, proxy_connection_hdr, BUFSIZ);
-            strncat(new_request, end_line, BUFSIZ);
-            // printf("new_request: \n\n%s\n", p);
-            
-            int request_length = 0;
-            request_length = strlen(new_request);
-            //Set up a new socket, and use it to connect() to the web server
-            //Register the socket with the epoll instance for writing
-            current_event->total_read_client = create_and_register_send_socket(sfd, port, host, new_request, request_length, request_to_forward); 
-        }
-
-        // if(!is_in_cache){
-        //     add_cache(&head_cache, url, current_event->buf, current_event->total_read_client);
-        // }           
-        // forward_bytes_to_client(connfd, request_to_forward, response_length);
-    }
-    else {
-        // simply close connection and move on
-    }
-
-    return;
-}
-
-void send_request_state(request_info* current_event)
-{
-    printf("send_request_state() function called!\n");
-
-    current_event->written_server = send_request_to_server(current_event->connection_fd, current_event);
-    return;
-}
-
-void read_response_state()
-{
-    printf("read_response_state() function called!\n");
-    return;
-}
-
-void send_response_state()
-{
-    printf("send_response_state() function called!\n");
-    return;
-}
 
 /* ------------------------------------- Cache functions -------------------------------------------------*/
 int readcnt;
@@ -185,8 +73,6 @@ cache_list head_cache;
 
 void cache_init(cache_list *cache) 
 {
-    readcnt = 0;
-
     cache->cache_size = 0;
     cache->number_of_objects = 0;
     cache->head = NULL;
@@ -300,22 +186,21 @@ void print_to_log_file(char* url)
 //     exit(0);
 // }
 
-
 /*---------------------------------------- Proxy code -----------------------------------------*/
 int sfd;
 struct sockaddr_in ip4addr;
 
-int send_request_to_server(int sfd, request_info* current_event)
+int send_request_to_server(int sfd, struct request_info current_event)
 {
 	int total_read = 0;
     int nread = 0;
-    while (current_event->total_read_client > 0)
+    while (current_event.total_write_server > 0)
     {
-        nread = write(sfd, request, length);
+        nread = write(sfd, current_event.buf, current_event.total_read_client);
 
         if (nread == 0){
         	//register socket for reading
-        	current_event->state = READ_RESPONSE; //Change state
+        	current_event.state = READ_RESPONSE; //Change state
             break;
         }
         else if (errno == EWOULDBLOCK || errno == EAGAIN){
@@ -325,7 +210,7 @@ int send_request_to_server(int sfd, request_info* current_event)
 
         }
         total_read += nread;
-        current_event->total_read_client -= nread;
+        current_event.total_write_server -= nread;
     }
     
     // sleep(1);
@@ -441,7 +326,7 @@ int read_bytes(int fd, char* p)
     return total_read;
 }
 
-int create_and_register_send_socket(int sfd, char* port, char* host, char* request, int length, char* p)
+int create_and_register_send_socket(int sfd, char* port, char* host, struct request_info current_event)
 {
 	struct addrinfo hints;
     struct addrinfo *result, *rp;
@@ -478,8 +363,8 @@ int create_and_register_send_socket(int sfd, char* port, char* host, char* reque
     event.events = EPOLLOUT; 
     event.data.fd = sfd;
     epoll_ctl(efd, EPOLL_CTL_ADD, sfd, &event);
-    current_event->state = SEND_REQUEST;
-    current_event->connection_fd = sfd;
+    current_event.state = SEND_REQUEST;
+    current_event.server_fd = sfd;
     return 0;
 }
 
@@ -579,81 +464,81 @@ void send_request(int sfd, char* request, int length)
     return;
 }
 
-void run_proxy(request_info* current_event) 
-{  
-    char request[MAXBUF] = {0};
-    char type[BUFSIZ] = {0};
-    char host[BUFSIZ];
-    char port[BUFSIZ];
-    char resource[BUFSIZ] = {0};
-    char protocal[BUFSIZ] = {0};
-    char version[BUFSIZ] = {0};
-    char url[BUFSIZ] = {0};
-    int sfd = 0;
-    int req_val = 0;
+// void run_proxy(request_info* current_event) 
+// {  
+//     char request[MAXBUF] = {0};
+//     char type[BUFSIZ] = {0};
+//     char host[BUFSIZ];
+//     char port[BUFSIZ];
+//     char resource[BUFSIZ] = {0};
+//     char protocal[BUFSIZ] = {0};
+//     char version[BUFSIZ] = {0};
+//     char url[BUFSIZ] = {0};
+//     int sfd = 0;
+//     int req_val = 0;
 
-    read_bytes(current_event->connection_fd, current_event->buf);
+//     read_bytes(current_event->connection_fd, current_event->buf);
 
-    req_val = parse_request(request, type, protocal, host, port, resource, version);
-    // printf("request = %s\n", request);
-    // printf("type = %s\n", type);
-    // printf("protocal = %s\n", protocal);
-    // printf("host = %s\n", host);
-    // printf("port = %s\n", port);
-    // printf("resource = %s\n", resource);
-    // printf("version = %s\n\n", version);
-    make_url(url, protocal, port, host, resource);
-    print_to_log_file(url);
+//     req_val = parse_request(request, type, protocal, host, port, resource, version);
+//     // printf("request = %s\n", request);
+//     // printf("type = %s\n", type);
+//     // printf("protocal = %s\n", protocal);
+//     // printf("host = %s\n", host);
+//     // printf("port = %s\n", port);
+//     // printf("resource = %s\n", resource);
+//     // printf("version = %s\n\n", version);
+//     make_url(url, protocal, port, host, resource);
+//     print_to_log_file(url);
 
 
-    if (req_val == 0){
-        int response_length = 0;
-        int is_in_cache = cache_search(&head_cache, url);
-        char request_to_forward[MAX_OBJECT_SIZE];
-        printf("url = %s\n", url);
-        printf("in cache = %d\n", 0);
+//     if (req_val == 0){
+//         int response_length = 0;
+//         int is_in_cache = cache_search(&head_cache, url);
+//         char request_to_forward[MAX_OBJECT_SIZE];
+//         printf("url = %s\n", url);
+//         printf("in cache = %d\n", 0);
 
-        if(is_in_cache){
-            printf("Is in cache\n");
-            response_length = get_data_from_cache(&head_cache, url, request_to_forward);
-        }
-        else{
-            // char* p = new_request;
-            char new_request[MAXBUF] = {0};
+//         if(is_in_cache){
+//             printf("Is in cache\n");
+//             response_length = get_data_from_cache(&head_cache, url, request_to_forward);
+//         }
+//         else{
+//             // char* p = new_request;
+//             char new_request[MAXBUF] = {0};
 
-            strncat(new_request, type, BUFSIZ);
-            strncat(new_request, " ", 2);
-            strncat(new_request, resource, BUFSIZ);
-            strncat(new_request, version_hdr, BUFSIZ);
-            strncat(new_request, end_line,BUFSIZ);
-            strncat(new_request, host_init, BUFSIZ);
-            strncat(new_request, host, BUFSIZ);
-            strncat(new_request, colon, BUFSIZ);
-            strncat(new_request, port, BUFSIZ);
-            strncat(new_request, end_line, BUFSIZ);
-            strncat(new_request, user_agent_hdr, BUFSIZ);
-            strncat(new_request, accept_line_hdr, BUFSIZ);
-            strncat(new_request, connection_hdr, BUFSIZ);
-            strncat(new_request, proxy_connection_hdr, BUFSIZ);
-            strncat(new_request, end_line, BUFSIZ);
-            // printf("new_request: \n\n%s\n", p);
+//             strncat(new_request, type, BUFSIZ);
+//             strncat(new_request, " ", 2);
+//             strncat(new_request, resource, BUFSIZ);
+//             strncat(new_request, version_hdr, BUFSIZ);
+//             strncat(new_request, end_line,BUFSIZ);
+//             strncat(new_request, host_init, BUFSIZ);
+//             strncat(new_request, host, BUFSIZ);
+//             strncat(new_request, colon, BUFSIZ);
+//             strncat(new_request, port, BUFSIZ);
+//             strncat(new_request, end_line, BUFSIZ);
+//             strncat(new_request, user_agent_hdr, BUFSIZ);
+//             strncat(new_request, accept_line_hdr, BUFSIZ);
+//             strncat(new_request, connection_hdr, BUFSIZ);
+//             strncat(new_request, proxy_connection_hdr, BUFSIZ);
+//             strncat(new_request, end_line, BUFSIZ);
+//             // printf("new_request: \n\n%s\n", p);
             
-            int request_length = 0;
-            request_length = strlen(new_request);
-            response_length = create_send_socket(sfd, port, host, new_request, request_length, request_to_forward); 
-        }
+//             int request_length = 0;
+//             request_length = strlen(new_request);
+//             response_length = create_send_socket(sfd, port, host, new_request, request_length, request_to_forward); 
+//         }
 
-        if(!is_in_cache){
-            add_cache(&head_cache, url, request_to_forward, response_length);
-        }           
-        forward_bytes_to_client(connfd, request_to_forward, response_length);
-    }
-    else {
-        // simply close connection and move on
-    }
+//         if(!is_in_cache){
+//             add_cache(&head_cache, url, request_to_forward, response_length);
+//         }           
+//         forward_bytes_to_client(connfd, request_to_forward, response_length);
+//     }
+//     else {
+//         // simply close connection and move on
+//     }
 
-    return;
-}
+//     return;
+// }
 
 int make_listening_socket(int port)
 {
@@ -679,18 +564,143 @@ int make_listening_socket(int port)
     return sfd;
 }
 
-void make_client(int port)
+/* ------------------------------------- epoll functions -------------------------------------------------*/
+
+void init_request_info(struct request_info info, int listenfd, int i)
 {
+    info.state = READ_REQUEST;
+    info.total_read_client = 0;
+    info.total_write_server = 0;
+    info.read_server = 0;
+    info.written_client = 0;
+    info.written_server = 0;
+    info.client_fd = listenfd;
+
+    all_events[i] = info;
+
+    return;
+}
+
+void read_request_state(struct request_info current_event)
+{
+    printf("read_request_state() function called!\n");
+    
+    char request[MAXBUF] = {0};
+    char type[BUFSIZ] = {0};
+    char host[BUFSIZ];
+    char port[BUFSIZ];
+    char resource[BUFSIZ] = {0};
+    char protocal[BUFSIZ] = {0};
+    char version[BUFSIZ] = {0};
+    char url[BUFSIZ] = {0};
+    int sfd = 0;
+    int req_val = 0;
+
+    read_bytes(current_event.client_fd, current_event.buf);
+
+    req_val = parse_request(request, type, protocal, host, port, resource, version);
+    // printf("request = %s\n", request);
+    // printf("type = %s\n", type);
+    // printf("protocal = %s\n", protocal);
+    // printf("host = %s\n", host);
+    // printf("port = %s\n", port);
+    // printf("resource = %s\n", resource);
+    // printf("version = %s\n\n", version);
+    make_url(url, protocal, port, host, resource);
+    print_to_log_file(url);
+
+
+    if (req_val == 0){
+        int is_in_cache = cache_search(&head_cache, url);
+        char request_to_forward[MAX_OBJECT_SIZE];
+        printf("url = %s\n", url);
+        printf("in cache = %d\n", is_in_cache);
+
+        if(is_in_cache){
+            printf("Is in cache\n");
+            current_event.read_server = get_data_from_cache(&head_cache, url, request_to_forward);
+            current_event.state = SEND_RESPONSE;
+            return;
+        }
+        else{
+            // char* p = new_request;
+            char new_request[MAXBUF] = {0};
+
+            strncat(new_request, type, BUFSIZ);
+            strncat(new_request, " ", 2);
+            strncat(new_request, resource, BUFSIZ);
+            strncat(new_request, version_hdr, BUFSIZ);
+            strncat(new_request, end_line,BUFSIZ);
+            strncat(new_request, host_init, BUFSIZ);
+            strncat(new_request, host, BUFSIZ);
+            strncat(new_request, colon, BUFSIZ);
+            strncat(new_request, port, BUFSIZ);
+            strncat(new_request, end_line, BUFSIZ);
+            strncat(new_request, user_agent_hdr, BUFSIZ);
+            strncat(new_request, accept_line_hdr, BUFSIZ);
+            strncat(new_request, connection_hdr, BUFSIZ);
+            strncat(new_request, proxy_connection_hdr, BUFSIZ);
+            strncat(new_request, end_line, BUFSIZ);
+            // printf("new_request: \n\n%s\n", p);
+            
+            current_event.total_write_server = strlen(new_request);
+            //Set up a new socket, and use it to connect() to the web server
+            //Register the socket with the epoll instance for writing
+            current_event.total_read_client = create_and_register_send_socket(sfd, port, host, current_event); 
+        }
+
+        // if(!is_in_cache){
+        //     add_cache(&head_cache, url, current_event->buf, current_event->total_read_client);
+        // }           
+        // forward_bytes_to_client(connfd, request_to_forward, response_length);
+    }
+    else {
+        // simply close connection and move on
+    }
+
+    return;
+}
+
+void send_request_state(struct request_info current_event)
+{
+    printf("send_request_state() function called!\n");
+
+    current_event.written_server = send_request_to_server(current_event.server_fd, current_event);
+    return;
+}
+
+void read_response_state(struct request_info current_event)
+{
+    printf("read_response_state() function called!\n");
+    return;
+}
+
+void send_response_state(struct request_info current_event)
+{
+    printf("send_response_state() function called!\n");
+    return;
+}
+
+/* ------------------------------------- main() -------------------------------------------------*/
+int main(int argc, char *argv[])
+{
+    int port;
+    if (argc < 2){
+	    fprintf(stderr, "usage: %s <port>\n", argv[0]);
+    	exit(0);
+    }
+    // signal(SIGPIPE, SIG_IGN);
+    // signal(SIGINT, sigint_handler);
+
+    port = atoi(argv[1]);
+
     int listenfd, connfdp;
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
-    struct request_info* request_info;
 	struct epoll_event event;
 	struct epoll_event *events;
 	size_t n; 
 	int i;
-	int len;
-	char buf[MAXLINE]; 
 	logfile = fopen("proxy_log.txt", "w"); //open logger file
 
     listenfd = make_listening_socket(port);
@@ -717,7 +727,7 @@ void make_client(int port)
 	events = calloc(MAXEVENTS, sizeof(event));
 
 	while (1) {
-		// wait for event to happen (no timeout)
+		// wait for event to happen (timeout of 1 second)
 		n = epoll_wait(efd, events, MAXEVENTS, 1);
 
         if(n < 0){ //If error
@@ -736,26 +746,6 @@ void make_client(int port)
 				close(events[i].data.fd);
 				continue;
 			}
-            // struct request_info* current_event;
-
-            // switch(current_event->state) {
-            //     case READ_REQUEST:
-            //         read_request_state(current_event);
-            //         break;
-            //     case SEND_REQUEST:
-            //         send_request_state();
-            //         break;
-            //     case READ_RESPONSE:
-            //         read_response_state();
-            //         break;
-            //     case SEND_RESPONSE:
-            //         send_response_state();
-            //         break;                                                
-            //     default : 
-            //     init_request_info(current_event, listenfd);
-            //     printf("Default print statement");
-            // }
-
 
 			if (listenfd == events[i].data.fd) {
 				clientlen = sizeof(struct sockaddr_storage); 
@@ -782,39 +772,36 @@ void make_client(int port)
 				}
 
 			} else { //corresponds to the client socket
-				while ((len = recv(events[i].data.fd, buf, MAXLINE, 0)) > 0) {
-					printf("Received %d bytes\n", len);
-					send(events[i].data.fd, buf, len, 0);
-				}
-				if (len == 0) {
-					// EOF received.
-					// Closing the fd will automatically unregister the fd
-					// from the efd
-					close(events[i].data.fd);
-				} else if (errno == EWOULDBLOCK || errno == EAGAIN) {
-					// no more data to read()
-				} else {
-					perror("error reading");
-				}
+
+                struct request_info current_event; 
+                current_event.state = 0;
+
+                switch(current_event.state) {
+                    case READ_REQUEST:
+                        read_request_state(current_event);
+                        break;
+                    case SEND_REQUEST:
+                        send_request_state(current_event);
+                        break;
+                    case READ_RESPONSE:
+                        read_response_state(current_event);
+                        break;
+                    case SEND_RESPONSE:
+                        send_response_state(current_event);
+                        break;                                                
+                    default : 
+                        init_request_info(current_event, listenfd, i);
+                        printf("Default print statement");
+                }
+
+
 			}
 		}
 	}
 	free(events);
-}
-
-
-int main(int argc, char *argv[])
-{
-    int port;
-    if (argc < 2){
-	    fprintf(stderr, "usage: %s <port>\n", argv[0]);
-    	exit(0);
-    }
-    // signal(SIGPIPE, SIG_IGN);
-    // signal(SIGINT, sigint_handler);
-
-    port = atoi(argv[1]);
-    make_client(port);
 
     return 0;
 }
+
+
+

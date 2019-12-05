@@ -35,6 +35,7 @@ static const char *version_hdr = " HTTP/1.0";
 static const char *colon = ":";
 
 /* ------------------------------------- epoll functions -------------------------------------------------*/
+int efd;
 
 struct request_info{
     int req_client_fd;
@@ -60,15 +61,93 @@ void init_request_info(struct request_info* info, int listenfd)
     return;
 }
 
-void read_request_state()
+void read_request_state(request_info* current_event)
 {
     printf("read_request_state() function called!\n");
+    
+    char request[MAXBUF] = {0};
+    char type[BUFSIZ] = {0};
+    char host[BUFSIZ];
+    char port[BUFSIZ];
+    char resource[BUFSIZ] = {0};
+    char protocal[BUFSIZ] = {0};
+    char version[BUFSIZ] = {0};
+    char url[BUFSIZ] = {0};
+    int sfd = 0;
+    int req_val = 0;
+
+    read_bytes(current_event->connection_fd, current_event->buf);
+
+    req_val = parse_request(request, type, protocal, host, port, resource, version);
+    // printf("request = %s\n", request);
+    // printf("type = %s\n", type);
+    // printf("protocal = %s\n", protocal);
+    // printf("host = %s\n", host);
+    // printf("port = %s\n", port);
+    // printf("resource = %s\n", resource);
+    // printf("version = %s\n\n", version);
+    make_url(url, protocal, port, host, resource);
+    print_to_log_file(url);
+
+
+    if (req_val == 0){
+        int response_length = 0;
+        int is_in_cache = cache_search(&head_cache, url);
+        char request_to_forward[MAX_OBJECT_SIZE];
+        printf("url = %s\n", url);
+        printf("in cache = %d\n", is_in_cache);
+
+        if(is_in_cache){
+            printf("Is in cache\n");
+            response_length = get_data_from_cache(&head_cache, url, request_to_forward);
+            current_event->state = SEND_RESPONSE;
+            return;
+        }
+        else{
+            // char* p = new_request;
+            char new_request[MAXBUF] = {0};
+
+            strncat(new_request, type, BUFSIZ);
+            strncat(new_request, " ", 2);
+            strncat(new_request, resource, BUFSIZ);
+            strncat(new_request, version_hdr, BUFSIZ);
+            strncat(new_request, end_line,BUFSIZ);
+            strncat(new_request, host_init, BUFSIZ);
+            strncat(new_request, host, BUFSIZ);
+            strncat(new_request, colon, BUFSIZ);
+            strncat(new_request, port, BUFSIZ);
+            strncat(new_request, end_line, BUFSIZ);
+            strncat(new_request, user_agent_hdr, BUFSIZ);
+            strncat(new_request, accept_line_hdr, BUFSIZ);
+            strncat(new_request, connection_hdr, BUFSIZ);
+            strncat(new_request, proxy_connection_hdr, BUFSIZ);
+            strncat(new_request, end_line, BUFSIZ);
+            // printf("new_request: \n\n%s\n", p);
+            
+            int request_length = 0;
+            request_length = strlen(new_request);
+            //Set up a new socket, and use it to connect() to the web server
+            //Register the socket with the epoll instance for writing
+            current_event->total_read_client = create_and_register_send_socket(sfd, port, host, new_request, request_length, request_to_forward); 
+        }
+
+        // if(!is_in_cache){
+        //     add_cache(&head_cache, url, current_event->buf, current_event->total_read_client);
+        // }           
+        // forward_bytes_to_client(connfd, request_to_forward, response_length);
+    }
+    else {
+        // simply close connection and move on
+    }
+
     return;
 }
 
-void send_request_state()
+void send_request_state(request_info* current_event)
 {
     printf("send_request_state() function called!\n");
+
+    current_event->written_server = send_request_to_server(current_event->connection_fd, current_event);
     return;
 }
 
@@ -85,8 +164,6 @@ void send_response_state()
 }
 
 /* ------------------------------------- Cache functions -------------------------------------------------*/
-sem_t w_sem;
-sem_t count_sem;
 int readcnt;
 
 typedef struct cache_node{
@@ -108,8 +185,6 @@ cache_list head_cache;
 
 void cache_init(cache_list *cache) 
 {
-    sem_init(&w_sem, 0, 1);
-    sem_init(&count_sem, 0, 1);
     readcnt = 0;
 
     cache->cache_size = 0;
@@ -127,7 +202,6 @@ void add_cache(cache_list *cache, char* url, char* content, int size)
         return;
     }
 
-    P(&w_sem);
     cache->cache_size += size;
     cache->number_of_objects += 1;
 
@@ -141,17 +215,10 @@ void add_cache(cache_list *cache, char* url, char* content, int size)
 
     cache->head = new_node;
 
-    V(&w_sem);
 }
 
 int cache_search(cache_list *cache, char* url)
 {
-    P(&count_sem);
-    readcnt++;
-    if (readcnt == 1) 
-        P(&w_sem);
-    V(&count_sem);        
-
     struct cache_node *current = cache->head;
     int result = 0;
 
@@ -161,21 +228,12 @@ int cache_search(cache_list *cache, char* url)
         }
         current = current->next;
     }
-
-
-    P(&count_sem);
-    readcnt--;
-    if (readcnt == 0) 
-        V(&w_sem); 
-    V(&count_sem);
-
     return result;
 }
 
 int get_data_from_cache(cache_list *cache, char* url, char* response)
 {
     // printf("Getting data from cache\n");
-    P(&w_sem);
     struct cache_node *current = cache->head;
     int result = 0;
 
@@ -188,7 +246,6 @@ int get_data_from_cache(cache_list *cache, char* url, char* response)
         }
         current = current->next;
     }
-    V(&w_sem); 
     return result;
 }
 
@@ -204,71 +261,8 @@ void free_cache(cache_list *cache)
     }
 }
 
-
-/* ------------------------------------- Thread pool code -------------------------------------------------*/
-typedef struct {
-    int *buf;          /* Buffer array */         
-    int n;             /* Maximum number of slots */
-    int front;         /* buf[(front+1)%n] is first item */
-    int rear;          /* buf[rear%n] is last item */
-    sem_t mutex;       /* Protects accesses to buf */
-    sem_t slots;       /* Counts available slots */
-    sem_t items;       /* Counts available items */
-} sbuf_t;
-
-sbuf_t sbuf;
-
-
-void sbuf_init(sbuf_t *sp, int n)
-{
-    sp->buf = calloc(n, sizeof(int)); 
-    sp->n = n;                       /* Buffer holds max of n items */
-    sp->front = sp->rear = 0;        /* Empty buffer iff front == rear */
-    Sem_init(&sp->mutex, 0, 1);      /* Binary semaphore for locking */
-    Sem_init(&sp->slots, 0, n);      /* Initially, buf has n empty slots */
-    Sem_init(&sp->items, 0, 0);      /* Initially, buf has zero data items */
-}
-
-void sbuf_deinit(sbuf_t *sp)
-{
-    free(sp->buf);
-}
-
-void sbuf_insert(sbuf_t *sp, int item)
-{
-    P(&sp->slots);                          /* Wait for available slot */
-    P(&sp->mutex);                          /* Lock the buffer */
-    sp->buf[(++sp->rear)%(sp->n)] = item;   /* Insert the item */
-    V(&sp->mutex);                          /* Unlock the buffer */
-    V(&sp->items);                          /* Announce available item */
-}
-
-int sbuf_remove(sbuf_t *sp)
-{
-    int item;
-    P(&sp->items);                          /* Wait for available item */
-    P(&sp->mutex);                          /* Lock the buffer */
-    item = sp->buf[(++sp->front)%(sp->n)];  /* Remove the item */
-    V(&sp->mutex);                          /* Unlock the buffer */
-    V(&sp->slots);                          /* Announce available slot */
-    return item;
-}
-
 /* ------------------------------------- Logger code -------------------------------------------------*/
 FILE *logfile;
-
-typedef struct {
-    char **buf;          /* Buffer array */         
-    int n;             /* Maximum number of slots */
-    int front;         /* buf[(front+1)%n] is first item */
-    int rear;          /* buf[rear%n] is last item */
-    sem_t mutex;       /* Protects accesses to buf */
-    sem_t slots;       /* Counts available slots */
-    sem_t items;       /* Counts available items */
-} log_t;
-
-log_t log_buf;
-
 
 void print_to_log_file(char* url)
 {
@@ -285,56 +279,6 @@ void print_to_log_file(char* url)
 
     fprintf(logfile, "%s", p);
     fflush(logfile);
-}
-
-void log_init(log_t *log, int n)
-{
-    log->buf = calloc(n, sizeof(int)); 
-    log->n = n;                       /* Buffer holds max of n items */
-    log->front = log->rear = 0;        /* Empty buffer iff front == rear */
-    Sem_init(&log->mutex, 0, 1);      /* Binary semaphore for locking */
-    Sem_init(&log->slots, 0, n);      /* Initially, buf has n empty slots */
-    Sem_init(&log->items, 0, 0);      /* Initially, buf has zero data items */
-}
-
-void log_deinit(log_t *log)
-{
-    free(log->buf);
-}
-
-void log_insert(log_t *log, char* item)
-{
-    P(&log->slots);                          /* Wait for available slot */
-    P(&log->mutex);                         /* Lock the buffer */
-    log->buf[(++log->rear)%(log->n)] = calloc(strlen(item), sizeof(char*));  
-    strcpy(log->buf[(log->rear)%(log->n)], item);           /* Insert the item */
-    V(&log->mutex);                          /* Unlock the buffer */
-    V(&log->items);                          /* Announce available item */
-}
-
-char* log_remove(log_t *log)
-{
-    char* item;
-    P(&log->items);                          /* Wait for available item */
-    P(&log->mutex);                          /* Lock the buffer */
-    item = log->buf[(++log->front)%(log->n)];  /* Remove the item */
-    V(&log->mutex);                          /* Unlock the buffer */
-    V(&log->slots);                          /* Announce available slot */
-    return item;
-}
-
-void* logger(void* vargp)
-{
-    // Pthread_detach(pthread_self());
-    // thread_ids[0] = pthread_self();
-    logfile = fopen("proxy_log.txt", "w");
-    log_init(&log_buf, LOGSIZE);
-
-    while(1){
-        char* url = log_remove(&log_buf);
-        print_to_log_file(url);
-        free(url);
-    }
 }
 
 /* ------------------------------------- SIGINT handler -------------------------------------------------*/
@@ -360,6 +304,33 @@ void* logger(void* vargp)
 /*---------------------------------------- Proxy code -----------------------------------------*/
 int sfd;
 struct sockaddr_in ip4addr;
+
+int send_request_to_server(int sfd, request_info* current_event)
+{
+	int total_read = 0;
+    int nread = 0;
+    while (current_event->total_read_client > 0)
+    {
+        nread = write(sfd, request, length);
+
+        if (nread == 0){
+        	//register socket for reading
+        	current_event->state = READ_RESPONSE; //Change state
+            break;
+        }
+        else if (errno == EWOULDBLOCK || errno == EAGAIN){
+            continue; //DON'T CHANGE STATE, continue reading until notified by epoll that there is more data
+        }
+        else{
+
+        }
+        total_read += nread;
+        current_event->total_read_client -= nread;
+    }
+    
+    // sleep(1);
+    return total_read;
+}
 
 void make_url(char* url, char* protocal, char* port, char* host, char* resource)
 {
@@ -451,20 +422,65 @@ int read_bytes(int fd, char* p)
 		nread = recv(fd, (p + total_read), MAXBUF, 0);
         total_read += nread;
         strcpy(temp_buf, p + total_read - 4);
-		if (nread == -1) {
+		if (nread < 0) {
             fprintf(stdout, "Error opening file: %s\n", strerror( errno ));
 			continue;     
         }         
-
-        if (nread == 0){
-            break;
+        else if (errno == EWOULDBLOCK || errno == EAGAIN){
+            continue; //DON'T CHANGE STATE, continue reading until notified by epoll that there is more data
         }
-        
+        else { //cancel client request and deregister your socket
+        	epoll_ctl(efd, EPOLL_CTL_DEL, fd, NULL);
+        	close(fd);
+        	return -1;
+        }
         if(!strcmp(temp_buf, "\r\n\r\n")){
             break;
         }
 	}
     return total_read;
+}
+
+int create_and_register_send_socket(int sfd, char* port, char* host, char* request, int length, char* p)
+{
+	struct addrinfo hints;
+    struct addrinfo *result, *rp;
+    int s;
+
+
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;    
+    hints.ai_socktype = SOCK_STREAM; 
+    hints.ai_flags = 0;
+    hints.ai_protocol = 0;          
+    s = getaddrinfo(host, port, &hints, &result);
+    if (s != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        exit(EXIT_FAILURE);
+    }
+
+    for (rp = result; rp != NULL; rp = rp->ai_next) {
+        sfd = socket(rp->ai_family, rp->ai_socktype,
+                    rp->ai_protocol);
+        if (sfd == -1)
+    continue;
+        if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1)
+            break;                  
+        close(sfd);
+    }
+    if (rp == NULL) {               
+        fprintf(stderr, "Could not connect\n");
+    }
+    freeaddrinfo(result);          
+
+    //Register the socket with epoll
+   	struct epoll_event event;
+    event.events = EPOLLOUT; 
+    event.data.fd = sfd;
+    epoll_ctl(efd, EPOLL_CTL_ADD, sfd, &event);
+    current_event->state = SEND_REQUEST;
+    current_event->connection_fd = sfd;
+    return 0;
 }
 
 int create_send_socket(int sfd, char* port, char* host, char* request, int length, char* p)
@@ -563,7 +579,7 @@ void send_request(int sfd, char* request, int length)
     return;
 }
 
-void run_proxy(int connfd) 
+void run_proxy(request_info* current_event) 
 {  
     char request[MAXBUF] = {0};
     char type[BUFSIZ] = {0};
@@ -576,7 +592,7 @@ void run_proxy(int connfd)
     int sfd = 0;
     int req_val = 0;
 
-    read_bytes(connfd,request);
+    read_bytes(current_event->connection_fd, current_event->buf);
 
     req_val = parse_request(request, type, protocal, host, port, resource, version);
     // printf("request = %s\n", request);
@@ -587,8 +603,7 @@ void run_proxy(int connfd)
     // printf("resource = %s\n", resource);
     // printf("version = %s\n\n", version);
     make_url(url, protocal, port, host, resource);
-    // print_to_log_file(url);
-    log_insert(&log_buf, url);
+    print_to_log_file(url);
 
 
     if (req_val == 0){
@@ -664,39 +679,22 @@ int make_listening_socket(int port)
     return sfd;
 }
 
-// void *thread(void *vargp)
-// {
-//     // Pthread_detach(pthread_self());
-
-//     while(1){
-//         int connection = sbuf_remove(&sbuf);
-//         run_proxy(connection);
-//         Close(connection);
-//     }
-//     return NULL;
-// }
-
-
 void make_client(int port)
 {
     int listenfd, connfdp;
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
     struct request_info* request_info;
-	int efd;
 	struct epoll_event event;
 	struct epoll_event *events;
 	size_t n; 
 	int i;
 	int len;
 	char buf[MAXLINE]; 
-
+	logfile = fopen("proxy_log.txt", "w"); //open logger file
 
     listenfd = make_listening_socket(port);
-
-    // sbuf_init(&sbuf, SBUFSIZE);
-    // cache_init(&head_cache);    //Initiate cache
-    // logger(NULL);        //Initiate logger
+    cache_init(&head_cache);    //Initiate cache
 
 	// set fd to non-blocking (set flags while keeping existing flags)
 	if (fcntl(listenfd, F_SETFL, fcntl(listenfd, F_GETFL, 0) | O_NONBLOCK) < 0) {
@@ -709,7 +707,7 @@ void make_client(int port)
 		exit(1);
 	}
 
-    event.data.ptr = request_info;
+    event.data.fd = listenfd;
 	event.events = EPOLLIN | EPOLLET; 
 	if (epoll_ctl(efd, EPOLL_CTL_ADD, listenfd, &event) < 0) {
 		fprintf(stderr, "error adding event\n");
@@ -722,11 +720,14 @@ void make_client(int port)
 		// wait for event to happen (no timeout)
 		n = epoll_wait(efd, events, MAXEVENTS, 1);
 
-        if(n < 0){
+        if(n < 0){ //If error
 		    fprintf(stderr, "Error with epoll_wait\n");
         }
+        else if(n == 0){ //If timeout
+        	fprintf(stderr, "Timeout with epoll_wait\n");
+        }
 
-		for (i = 0; i < n; i++) {
+		for (i = 0; i < n; i++) { // Loop through all events
 			if ((events[i].events & EPOLLERR) ||
 					(events[i].events & EPOLLHUP) ||
 					(events[i].events & EPOLLRDHUP)) {
@@ -735,67 +736,67 @@ void make_client(int port)
 				close(events[i].data.fd);
 				continue;
 			}
-            struct request_info* current_event = events[i].data.ptr;
+            // struct request_info* current_event;
 
-            switch(current_event->state) {
-                case READ_REQUEST:
-                    read_request_state();
-                    break;
-                case SEND_REQUEST:
-                    send_request_state();
-                    break;
-                case READ_RESPONSE:
-                    read_response_state();
-                    break;
-                case SEND_RESPONSE:
-                    send_response_state();
-                    break;                                                
-                default : 
-                init_request_info(current_event, listenfd);
-                printf("Default print statement");
-            }
+            // switch(current_event->state) {
+            //     case READ_REQUEST:
+            //         read_request_state(current_event);
+            //         break;
+            //     case SEND_REQUEST:
+            //         send_request_state();
+            //         break;
+            //     case READ_RESPONSE:
+            //         read_response_state();
+            //         break;
+            //     case SEND_RESPONSE:
+            //         send_response_state();
+            //         break;                                                
+            //     default : 
+            //     init_request_info(current_event, listenfd);
+            //     printf("Default print statement");
+            // }
 
 
-			// if (listenfd == events[i].data.fd) {
-			// 	clientlen = sizeof(struct sockaddr_storage); 
+			if (listenfd == events[i].data.fd) {
+				clientlen = sizeof(struct sockaddr_storage); 
 
-			// 	// loop and get all the connections that are available
-			// 	while ((connfdp = accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen)) > 0) {
+				// loop and get all the connections that are available
+				while ((connfdp = accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen)) > 0) {
 
-			// 		if (fcntl(connfdp, F_SETFL, fcntl(connfdp, F_GETFL, 0) | O_NONBLOCK) < 0) {
-			// 			fprintf(stderr, "error setting socket option\n");
-			// 			exit(1);
-			// 		}
-			// 		event.data.fd = connfdp;
-			// 		event.events = EPOLLIN | EPOLLET; 
-			// 		if (epoll_ctl(efd, EPOLL_CTL_ADD, connfdp, &event) < 0) {
-			// 			fprintf(stderr, "error adding event\n");
-			// 			exit(1);
-			// 		}
-			// 	}
+					if (fcntl(connfdp, F_SETFL, fcntl(connfdp, F_GETFL, 0) | O_NONBLOCK) < 0) {
+						fprintf(stderr, "error setting socket option\n");
+						exit(1);
+					}
+					event.data.fd = connfdp;
+					event.events = EPOLLIN | EPOLLET; 
+					if (epoll_ctl(efd, EPOLL_CTL_ADD, connfdp, &event) < 0) {
+						fprintf(stderr, "error adding event\n");
+						exit(1);
+					}
+				}
 
-			// 	if (errno == EWOULDBLOCK || errno == EAGAIN) {
-			// 		// no more clients to accept()
-			// 	} else {
-			// 		perror("error accepting");
-			// 	}
+				if (errno == EWOULDBLOCK || errno == EAGAIN) {
+					// no more clients to accept()
+				} else {
+					perror("error accepting");
+				}
 
-			// } else { 
-			// 	while ((len = recv(events[i].data.fd, buf, MAXLINE, 0)) > 0) {
-			// 		printf("Received %d bytes\n", len);
-			// 		send(events[i].data.fd, buf, len, 0);
-			// 	}
-			// 	if (len == 0) {
-			// 		// EOF received.
-			// 		// Closing the fd will automatically unregister the fd
-			// 		// from the efd
-			// 		close(events[i].data.fd);
-			// 	} else if (errno == EWOULDBLOCK || errno == EAGAIN) {
-			// 		// no more data to read()
-			// 	} else {
-			// 		perror("error reading");
-			// 	}
-			// }
+			} else { //corresponds to the client socket
+				while ((len = recv(events[i].data.fd, buf, MAXLINE, 0)) > 0) {
+					printf("Received %d bytes\n", len);
+					send(events[i].data.fd, buf, len, 0);
+				}
+				if (len == 0) {
+					// EOF received.
+					// Closing the fd will automatically unregister the fd
+					// from the efd
+					close(events[i].data.fd);
+				} else if (errno == EWOULDBLOCK || errno == EAGAIN) {
+					// no more data to read()
+				} else {
+					perror("error reading");
+				}
+			}
 		}
 	}
 	free(events);

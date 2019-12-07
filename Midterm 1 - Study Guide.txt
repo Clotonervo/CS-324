@@ -33,6 +33,8 @@ File descriptors
   - dup2() concepts
     > dup2(1,2)
       * Takes the stdout(1) and pushes it into stderr(2)
+      * Takes the stdout(1) and now everything that goes to stdout goes to stderr(2)
+      * dup2(1,2) = 1>&2
 
 Shell usage
   - file descriptor redirection / duplication
@@ -53,7 +55,7 @@ Shell usage
       * Ex. ./program | grep bob  => gives you all lines that contains "bob" in them (-v is everything but)
     > Echo: Echos the result
 
-    > Cat: prints out file, must be used for redirection
+    > Cat: prints out file, must be used for redirection, stdout of last program used as stdin to the next one
 
 Processes
   - fork

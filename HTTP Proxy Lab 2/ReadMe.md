@@ -264,3 +264,4 @@ nop-server.py
 tiny
     Tiny Web server from the CS:APP text
 
+curl -v --proxy http://localhost:1234 http://google.com/

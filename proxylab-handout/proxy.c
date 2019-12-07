@@ -412,17 +412,18 @@ void read_request_state(struct request_info* current_event) //TEST
     int sfd = 0;
     int req_val = 0;
 
-    int total_read = 0;
     char temp_buf[MAXBUF] = {0};
     char* p = current_event->buf;
 
     while(1) {
-        ssize_t nread = 0;
+        int nread = 0;
         // printf("in while loop\n");
 		
         nread = recv(current_event->client_fd, (p + current_event->total_read_client), MAXBUF, 0);
-        total_read += nread;
-        current_event->total_read_client += nread;
+        if (nread > 0){
+            current_event->total_read_client += nread;
+        }
+
         strcpy(temp_buf, p + current_event->total_read_client - 4);
 
             // fprintf(logfile, "%s", temp_buf);
@@ -447,13 +448,11 @@ void read_request_state(struct request_info* current_event) //TEST
 
     // printf("request = %s\n",current_event->buf);
 
-    current_event->total_read_client = total_read;
-
     req_val = parse_request(current_event->buf, type, protocal, host, port, resource, version);
 
     make_url(url, protocal, port, host, resource);
-    strcpy(current_event->url, url);
     print_to_log_file(url);
+    strcpy(current_event->url, url);
     
 
     if (req_val == 0){
@@ -536,8 +535,10 @@ void send_request_state(struct request_info* current_event) //TEST
             current_event->state = DONE;
             return;
         }
-        current_event->written_to_server += nread;
-        current_event->total_write_server -= nread;
+        else {
+            current_event->written_to_server += nread;
+            current_event->total_write_server -= nread;
+        }
     }
 
     struct epoll_event event;  //register socket for reading
@@ -564,6 +565,7 @@ void read_response_state(struct request_info* current_event) //TEST
     char* p = current_event->buf;
 
     while(1) {
+        errno = 0;
 		nread = recv(current_event->server_fd, (p + current_event->read_from_server), MAXBUF, 0);
         // current_event->read_from_server += nread;  
         // fprintf(logfile, "read_from_server = %d\n", current_event->read_from_server);

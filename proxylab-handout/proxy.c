@@ -16,11 +16,12 @@
 #define MAX_OBJECT_SIZE 102400
 #define SBUFSIZE 500
 #define LOGSIZE 500
-#define MAXEVENTS 64
+#define MAXEVENTS 20
 #define READ_REQUEST 1
 #define SEND_REQUEST 2
 #define READ_RESPONSE 3
 #define SEND_RESPONSE 4
+#define DONE 5
 
 
 /* You won't lose style points for including this long line in your code */
@@ -41,6 +42,7 @@ struct request_info{
     int server_fd;
     int state;
     char buf[MAX_OBJECT_SIZE];
+    char url[MAXBUF];
     int total_read_client;
     int total_write_server;
     int written_to_server;
@@ -48,10 +50,11 @@ struct request_info{
     int written_to_client;
 };
 
-struct request_info all_events[sizeof(struct request_info) * 64];
-int size_of_all_events = sizeof(all_events)/sizeof(struct request_info);
+struct request_info all_events[MAXEVENTS];
+int size_of_all_events = MAXEVENTS;
 struct epoll_event *events;
 
+FILE *logfile;
 
 /* ------------------------------------- Cache functions -------------------------------------------------*/
 
@@ -88,6 +91,8 @@ void add_cache(cache_list *cache, char* url, char* content, int size)
     if (cache->cache_size + size > MAX_CACHE_SIZE){
         return;
     }
+        // fprintf(logfile,"**************************************************** adding url = %s\n", url);
+
 
     cache->cache_size += size;
     cache->number_of_objects += 1;
@@ -108,8 +113,13 @@ int cache_search(cache_list *cache, char* url)
 {
     struct cache_node *current = cache->head;
     int result = 0;
+        // fprintf(logfile,"**************************************************** searching for url = %s\n", url);
+        // fprintf(logfile, "******************string length = %d\n", strlen(url));
+
 
     while(current){
+        // fprintf(logfile,"*** node url = %s\n", current->url);
+        // fprintf(logfile, "string length = %d\n", strlen(current->url));
         if (!strcmp(current->url, url)) { 
             result = 1;
         }
@@ -127,6 +137,7 @@ int get_data_from_cache(cache_list *cache, char* url, char* response)
     while(current){
 
         if (!strcmp(current->url, url)) { 
+            // fprintf(logfile, "Found cache: \nsize =%d\nresponse = %s\n", current->size, current->response);
             memcpy(response, current->response, current->size);
             result = current->size;
             break;
@@ -149,12 +160,10 @@ void free_cache(cache_list *cache)
 }
 
 /* ------------------------------------- Logger code -------------------------------------------------*/
-FILE *logfile;
 
 void print_to_log_file(char* url)
 {
     char message[MAXBUF] = {0};
-    char* p = message;
     time_t now;
     char time_str[MAXLINE] = {0};
 
@@ -164,8 +173,9 @@ void print_to_log_file(char* url)
     strcat(message, ">|  ");
     strcat(message, url);
 
-    fprintf(logfile, "%s", p);
+    fprintf(logfile, "%s", message);
     fflush(logfile);
+    return;
 }
 
 /* ------------------------------------- SIGINT handler -------------------------------------------------*/
@@ -184,27 +194,33 @@ void sigint_handler(int sig)
 int sfd;
 struct sockaddr_in ip4addr;
 
-void deregister_socket(struct request_info info)        //Code to deregister a socket from epoll and clean it in the datastructure
+void deregister_socket()        //Code to deregister a socket from epoll and clean it in the datastructure
 {
     for(int j = 0; j < size_of_all_events; j++){ 
-        if (info.client_fd == all_events[j].client_fd || info.server_fd == all_events[j].server_fd){
+        struct request_info info = all_events[j];
+        // fprintf(logfile, "Event state = %d\n", info.state);
+
+        if (info.state == DONE){
+            fprintf(logfile, "Deregistering a socket!\n");
+            epoll_ctl(efd, EPOLL_CTL_DEL, info.client_fd, NULL);
             close(info.client_fd);
+            epoll_ctl(efd, EPOLL_CTL_DEL, info.server_fd, NULL);
             close(info.server_fd);
-            if(errno == EBADF){
-                continue; //Just means one of the file descriptors possibly wasn't ready
-            }
-            
+            char clear[MAX_OBJECT_SIZE] = {0};
+            char url_clear[MAXBUF] = {0};
+
+            memcpy(info.buf, clear, MAX_OBJECT_SIZE);
+            memcpy(info.url, url_clear, MAXBUF);
             info.state = 0;
             info.total_read_client = 0;
             info.total_write_server = 0;
             info.read_from_server = 0;
             info.written_to_client = 0;
             info.written_to_server = 0;
-            info.client_fd = sfd;
+            info.client_fd = 0;
             info.server_fd = -1;
-            all_events[j] = info;
 
-            j = size_of_all_events;
+            all_events[j] = info;
         }
     }
 }
@@ -290,7 +306,7 @@ int parse_request(char* request, char* type, char* protocol, char* host, char* p
 	return 0;
 }
 
-void create_and_register_send_socket(int sfd, char* port, char* host, struct request_info current_event)
+void create_and_register_send_socket(int sfd, char* port, char* host, struct request_info* current_event)
 {
 	struct addrinfo hints;
     struct addrinfo *result, *rp;
@@ -328,11 +344,11 @@ void create_and_register_send_socket(int sfd, char* port, char* host, struct req
 
     //Register the socket with epoll
    	struct epoll_event event;
-    event.events = EPOLLOUT; 
+    event.events = EPOLLOUT|EPOLLET; 
     event.data.fd = sfd;
     epoll_ctl(efd, EPOLL_CTL_ADD, sfd, &event);
-    current_event.state = SEND_REQUEST;
-    current_event.server_fd = sfd;
+    current_event->state = SEND_REQUEST;
+    current_event->server_fd = sfd;
     return;
 }
 
@@ -362,25 +378,30 @@ int make_listening_socket(int port)
 
 /* ------------------------------------- Epoll states -------------------------------------------------*/
 
-void init_request_info(struct request_info info, int sfd)
+void init_request_info(struct request_info* info, int sfd)
 {
-    info.state = READ_REQUEST;
-    info.total_read_client = 0;
-    info.total_write_server = 0;
-    info.read_from_server = 0;
-    info.written_to_client = 0;
-    info.written_to_server = 0;
-    info.client_fd = sfd;
-    info.server_fd = -1;
+    char clear[MAX_OBJECT_SIZE] = {0};
+    char url_clear[MAXBUF] = {0};
 
+    memcpy(info->buf, clear, MAX_OBJECT_SIZE);
+    memcpy(info->url, url_clear, MAXBUF);
+    info->state = READ_REQUEST;
+    info->total_read_client = 0;
+    info->total_write_server = 0;
+    info->read_from_server = 0;
+    info->written_to_client = 0;
+    info->written_to_server = 0;
+    info->client_fd = sfd;
+    info->server_fd = -1;
+    
     return;
 }
 
-void read_request_state(struct request_info current_event) //TEST
+void read_request_state(struct request_info* current_event) //TEST
 {
-    printf("read_request_state() function called!\n");
+    fprintf(logfile, "read_request_state() function called!\n");
     
-    char request[MAXBUF] = {0};
+    // char request[MAXBUF] = {0};
     char type[BUFSIZ] = {0};
     char host[BUFSIZ];
     char port[BUFSIZ];
@@ -393,56 +414,66 @@ void read_request_state(struct request_info current_event) //TEST
 
     int total_read = 0;
     char temp_buf[MAXBUF] = {0};
-    char* p = current_event.buf;
+    char* p = current_event->buf;
 
     while(1) {
         ssize_t nread = 0;
+        // printf("in while loop\n");
 		
-        nread = recv(current_event.client_fd, (p + total_read), MAXBUF, 0);
+        nread = recv(current_event->client_fd, (p + current_event->total_read_client), MAXBUF, 0);
         total_read += nread;
-        strcpy(temp_buf, p + total_read - 4);
-        
-        if (errno == EWOULDBLOCK || errno == EAGAIN){
-            continue; //DON'T CHANGE STATE, continue reading until notified by epoll that there is more data
-        }
-        else { //cancel client request and deregister your socket
-        	deregister_socket(current_event);
-        	return;
-        }
+        current_event->total_read_client += nread;
+        strcpy(temp_buf, p + current_event->total_read_client - 4);
+
+            // fprintf(logfile, "%s", temp_buf);
+            //  fflush(logfile); 
+
         if(!strcmp(temp_buf, "\r\n\r\n")){
             break;
         }
+        else if (errno == EWOULDBLOCK || errno == EAGAIN){
+            // fprintf(logfile, "%s", "EWOULDBLOCK OR EAGAIN\n");
+            errno = 0;
+            return; //DON'T CHANGE STATE, continue reading until notified by epoll that there is more data
+        }
+        else if (nread < 0) { //cancel client request and deregister your socket
+        	current_event->state = DONE;
+            fprintf(stderr, "Something went wrong when reading client request!\n");
+            deregister_socket();
+        	return;
+        }
+
 	}
 
-    current_event.total_read_client = total_read
+    // printf("request = %s\n",current_event->buf);
 
-    req_val = parse_request(request, type, protocal, host, port, resource, version);
-    // printf("request = %s\n", request);
-    // printf("type = %s\n", type);
-    // printf("protocal = %s\n", protocal);
-    // printf("host = %s\n", host);
-    // printf("port = %s\n", port);
-    // printf("resource = %s\n", resource);
-    // printf("version = %s\n\n", version);
+    current_event->total_read_client = total_read;
+
+    req_val = parse_request(current_event->buf, type, protocal, host, port, resource, version);
+
     make_url(url, protocal, port, host, resource);
+    strcpy(current_event->url, url);
     print_to_log_file(url);
-
+    
 
     if (req_val == 0){
-        int is_in_cache = cache_search(&head_cache, url);
+        int is_in_cache = cache_search(&head_cache, current_event->url);
         char request_to_forward[MAX_OBJECT_SIZE];
-        // printf("url = %s\n", url);
-        // printf("in cache = %d\n", is_in_cache);
 
         if(is_in_cache){
-            printf("Is in cache\n");
-            current_event.read_from_server = get_data_from_cache(&head_cache, url, request_to_forward);
-            current_event.buf = request_to_forward;
-            current_event.state = SEND_RESPONSE;
+            current_event->read_from_server = get_data_from_cache(&head_cache, current_event->url, request_to_forward);
+            strcpy(current_event->buf, request_to_forward);
+
+            struct epoll_event event;  //register socket for writing
+            event.events = EPOLLOUT | EPOLLET; 
+            event.data.fd = current_event->client_fd;
+            epoll_ctl(efd, EPOLL_CTL_MOD, current_event->client_fd, &event);
+        	current_event->state = SEND_RESPONSE; //Change state
+            current_event->client_fd = event.data.fd;
+
             return;
         }
         else{
-            // char* p = new_request;
             char new_request[MAXBUF] = {0};
 
             strncat(new_request, type, BUFSIZ);
@@ -460,9 +491,9 @@ void read_request_state(struct request_info current_event) //TEST
             strncat(new_request, connection_hdr, BUFSIZ);
             strncat(new_request, proxy_connection_hdr, BUFSIZ);
             strncat(new_request, end_line, BUFSIZ);
-            // printf("new_request: \n\n%s\n", p);
             
-            current_event.total_write_server = strlen(new_request);
+            current_event->total_write_server = strlen(new_request);
+            strcpy(current_event->buf, new_request);
             //Set up a new socket, and use it to connect() to the web server
             //Register the socket with the epoll instance for writing
             create_and_register_send_socket(sfd, port, host, current_event); 
@@ -472,103 +503,143 @@ void read_request_state(struct request_info current_event) //TEST
     else {
         // simply close connection and move on
     }
+        // fprintf(logfile, "buffer here is = %s\n", current_event->buf);
+
+    fprintf(logfile, "Finished with read_request state!\n\n");
 
     return;
 }
 
-void send_request_state(struct request_info current_event) //TEST
+// --------------------------------------- STATE 2: Send the request to the server
+void send_request_state(struct request_info* current_event) //TEST
 {
-    printf("send_request_state() function called!\n");
+    fprintf(logfile, "send_request_state() function called!\n");
+    // fprintf(logfile, "total_write_server = %d\n", current_event->total_write_server);
+    // fprintf(logfile, "buffer = %s", current_event->buf);
 
-    int total_read = current_event.written_to_server;
     int nread = 0;
-    while (current_event.total_write_server > 0)
+    while (current_event->total_write_server > 0)
     {
-        nread = write(current_event.server_fd, current_event.buf, current_event.total_read_client);
+        nread = write(current_event->server_fd, current_event->buf, current_event->total_write_server);
+        // fprintf(logfile, "nread = %d\n", nread);
 
         if (nread == 0){
-        	struct epoll_event event;  //register socket for reading
-            event.events = EPOLLIN; 
-            event.data.fd = current_event.server_fd;
-            epoll_ctl(efd, EPOLL_CTL_ADD, current_event.server_fd, &event);
-        	current_event.state = READ_RESPONSE; //Change state
             break;
         }
         else if (errno == EWOULDBLOCK || errno == EAGAIN){
-            continue; //DON'T CHANGE STATE, continue reading until notified by epoll that there is more data
+            errno = 0;
+            return; //DON'T CHANGE STATE, continue reading until notified by epoll that there is more data
         }
-        else{
-            deregister_socket(current_event);
+        else if (nread < 0){
+            fprintf(logfile, "ERROR: Something went wrong while sending request to server!\n");
+            fprintf(logfile, "%s\n", strerror(errno));
+            current_event->state = DONE;
             return;
         }
-        current_event.written_to_server += nread;
-        current_event.total_write_server -= nread;
+        current_event->written_to_server += nread;
+        current_event->total_write_server -= nread;
     }
+
+    struct epoll_event event;  //register socket for reading
+    event.events = EPOLLIN | EPOLLET; 
+    event.data.fd = current_event->server_fd;
+    epoll_ctl(efd, EPOLL_CTL_MOD, current_event->server_fd, &event);
     
+    current_event->state = READ_RESPONSE; //Change state
+    char clear[MAX_OBJECT_SIZE] = {0};
+    memcpy(current_event->buf, clear, MAX_OBJECT_SIZE);
+    current_event->server_fd = current_event->server_fd;
+    
+    fprintf(logfile, "Finished with send_request state!\n\n");
     return;
 }
 
-void read_response_state(struct request_info current_event) //TEST
+// --------------------------------------------------- STATE 3: Read response from server
+void read_response_state(struct request_info* current_event) //TEST
 {
-    printf("read_response_state() function called!\n");
+    fprintf(logfile, "read_response_state() function called!\n");
+    // fprintf(logfile, "read_from_server = %d\n", current_event->read_from_server);
 
-    int total_read = current_event.read_from_server;
     ssize_t nread = 0;
-    char* p = current_event.buf
+    char* p = current_event->buf;
 
     while(1) {
-		nread = recv(sfd, (p + total_read), MAXBUF, 0);
-        total_read += nread;
-		if (nread == -1) {
-            printf("error: %s\n", strerror(errno));
-			continue;     
-        }         
+		nread = recv(current_event->server_fd, (p + current_event->read_from_server), MAXBUF, 0);
+        // current_event->read_from_server += nread;  
+        // fprintf(logfile, "read_from_server = %d\n", current_event->read_from_server);
 
         if (nread == 0){
             struct epoll_event event;  //register socket for writing
-            event.events = EPOLLOUT; 
-            event.data.fd = current_event.client_fd;
-            epoll_ctl(efd, EPOLL_CTL_ADD, current_event.client_fd, &event);
-        	current_event.state = SEND_RESPONSE; //Change state
+            event.events = EPOLLOUT | EPOLLET; 
+            event.data.fd = current_event->client_fd;
+            epoll_ctl(efd, EPOLL_CTL_MOD, current_event->client_fd, &event);
+        	current_event->state = SEND_RESPONSE; //Change state
+            current_event->client_fd = event.data.fd;
+
             break;
         }
         else if (errno == EWOULDBLOCK || errno == EAGAIN){
-            continue; //DON'T CHANGE STATE, continue reading until notified by epoll that there is more data
+            errno = 0;
+            return; //DON'T CHANGE STATE, continue reading until notified by epoll that there is more data
         }
-        else{
-            deregister_socket(current_event);
+        else if (nread < 0){
+            printf("ERROR: Something went wrong while reading response from server!\n");
+            fprintf(logfile, "%s\n", strerror(errno));
+            current_event->state = DONE;
             return;
         }
-        current_event.read_from_server += nread;
+        else {
+            // fprintf(logfile, "now read_from_server = %d\n", current_event->read_from_server);
+            current_event->read_from_server += nread;  
+        }
     }
+    fprintf(logfile, "Finished with read_response state!\n\n");
 
     return;
 }
 
-void send_response_state(struct request_info current_event) //TEST
+// --------------------------------------------------------------------- STATE 4: Send the response to the client
+void send_response_state(struct request_info* current_event) 
 {
-    printf("send_response_state() function called!\n");
+    fprintf(logfile, "send_response_state() function called!\n");
+    // printf("read_from_server = %d\n", current_event->read_from_server);
 
-    int total_read = current_event.read_from_server;
     int nread = 0;
-    while (current_event.read_from_server > 0)
+    while (current_event->read_from_server > 0)
     {
-        nread = write(current_event.server_fd, current_event.buf, current_event.read_from_server);
+        nread = write(current_event->client_fd, current_event->buf, current_event->read_from_server);
+        current_event->written_to_client += nread;
+        current_event->read_from_server -= nread;
+        // fprintf(logfile, "nread = %d\n", nread);
+        // fprintf(logfile, "read_from_server = %d\n", current_event->read_from_server);
 
         if (nread == 0){
+            // fprintf(logfile, "Breaking out of while loop \n");
             break;
         }
         else if (errno == EWOULDBLOCK || errno == EAGAIN){
-            continue; //DON'T CHANGE STATE, continue reading until notified by epoll that there is more data
+            // fprintf(logfile, "in ewouldblock stuff\n");
+            errno = 0;
+            return; //DON'T CHANGE STATE, continue reading until notified by epoll that there is more data
         }
-        else{
-            deregister_socket(current_event);
+        else if (nread < 0){
+            printf("ERROR: Something went wrong while sending response to client!\n");
+            fprintf(logfile, "%s\n", strerror(errno));
+            current_event->state = DONE;
             return;
         }
-        current_event.written_to_client += nread;
-        current_event.read_from_server -= nread;
+
     }
-    deregister_socket(current_event); // close file descriptors, and we are done!
+    // fprintf(logfile, "response = \n%s", current_event->buf);
+        // fprintf(logfile, "written to client = %d\n", current_event->written_to_client);
+
+    if(!cache_search(&head_cache, current_event->url)){
+        add_cache(&head_cache, current_event->url, current_event->buf, current_event->written_to_client);
+    }
+
+    current_event->state = DONE; // Mark it as done to be deregistered
+    // deregister_socket();
+    fprintf(logfile, "Finished with send_response state!\n\n");
 
     return;
 }
@@ -576,13 +647,14 @@ void send_response_state(struct request_info current_event) //TEST
 /* ------------------------------------- main() -------------------------------------------------*/
 int main(int argc, char *argv[])
 {
+    // printf("start program");
     int port;
     if (argc < 2){
 	    fprintf(stderr, "usage: %s <port>\n", argv[0]);
     	exit(0);
     }
     // signal(SIGPIPE, SIG_IGN);
-    // signal(SIGINT, sigint_handler);
+    signal(SIGINT, sigint_handler);
 
     port = atoi(argv[1]);
 
@@ -593,6 +665,7 @@ int main(int argc, char *argv[])
 	size_t n; 
 	int i;
 	logfile = fopen("proxy_log.txt", "w"); //open logger file
+    // printf("log open!\n");
 
     listenfd = make_listening_socket(port);
     cache_init(&head_cache);    //Initiate cache
@@ -625,16 +698,18 @@ int main(int argc, char *argv[])
 
 	while (1) {
 		// wait for event to happen (timeout of 1 second)
-		n = epoll_wait(efd, events, MAXEVENTS, 1);
+		n = epoll_wait(efd, events, MAXEVENTS, -1);
 
         if(n < 0){ //If error
 		    fprintf(stderr, "Error with epoll_wait\n");
         }
         else if(n == 0){ //If timeout
-        	fprintf(stderr, "Timeout with epoll_wait\n");
+        	// fprintf(stderr, "Timeout with epoll_wait\n");
         }
 
 		for (i = 0; i < n; i++) { // Loop through all events
+                // fprintf(logfile, "--------------------\nn = %d\n------------------\n", n);
+
 			if ((events[i].events & EPOLLERR) ||
 					(events[i].events & EPOLLHUP) ||
 					(events[i].events & EPOLLRDHUP)) {
@@ -646,6 +721,8 @@ int main(int argc, char *argv[])
 
 			if (listenfd == events[i].data.fd) {
 				clientlen = sizeof(struct sockaddr_storage); 
+                // fprintf(logfile, "---- There is a new listening fd\n");
+
 
 				// loop and get all the connections that are available
 				while ((connfdp = accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen)) > 0) {
@@ -660,12 +737,13 @@ int main(int argc, char *argv[])
 						fprintf(stderr, "error adding event\n");
 						exit(1);
 					}
-                    struct request_info new_event;
-                    init_request_info(new_event, connfdp)
+                    // struct request_info new_event;
 
                     for(int j = 0; j < size_of_all_events; j++){ //Add event to the data structure
                         if(all_events[j].state == 0){
-                            all_events[j] = new_event;
+                            init_request_info(&all_events[j], connfdp);
+                            printf("ADDED EVENT!\n");
+                            printf("%d\n", all_events[j].state);
                             j = size_of_all_events;
                         }
                     }
@@ -673,39 +751,75 @@ int main(int argc, char *argv[])
 				}
 
 				if (errno == EWOULDBLOCK || errno == EAGAIN) {
+                    errno = 0;
 					// no more clients to accept()
 				} else {
 					perror("error accepting");
 				}
 
 			} else { //corresponds to the client socket
+                    // fprintf(logfile, "---- Something is happening to an existing event: %d\n", events[i].data.fd);
 
-                struct request_info current_event;
+                // struct request_info current_event;
+                // fprintf(logfile, "event file descriptor \n/", events[i].data.fd);
+
 
                 for(int j = 0; j < size_of_all_events; j++){ //Find correct event that is up to bat
                     if (events[i].data.fd == all_events[j].client_fd || events[i].data.fd == all_events[j].server_fd){
-                        current_event = all_events[j]
-                        j = size_of_all_events;
+
+
+                        // fprintf(logfile, "all_events[%d] = %d\n", j, all_events[j].state);
+                        // fprintf(logfile, "current client fd = %d\n", all_events[j].client_fd);
+                        // fprintf(logfile, "current server fd = %d\n", all_events[j].server_fd);
+
+
+                        switch(all_events[j].state) {
+                            case READ_REQUEST:
+                                read_request_state(&all_events[j]);
+                                // fprintf(logfile, "now state is at all_events[%d] = %d\n", j, all_events[j].state);
+                                sleep(1);
+                                break;
+                            case SEND_REQUEST:
+                                send_request_state(&all_events[j]);
+                                // fprintf(logfile, "now state is = %d\n", all_events[j].state);
+                                sleep(1);
+                                break;
+                            case READ_RESPONSE:
+                                read_response_state(&all_events[j]);
+                                // fprintf(logfile, "now state is = %d\n", all_events[j].state);
+                                break;
+                            case SEND_RESPONSE:
+                                send_response_state(&all_events[j]);
+                                // fprintf(logfile, "now state is = %d\n", all_events[j].state);
+                                break;                                                
+                            default: 
+                                // fprintf(logfile, "current_event.state = %d\n", all_events[j].state);
+                                deregister_socket();
+                                // fprintf(logfile, "now current_event.state = %d\n", all_events[j].state);
+                                break;
+                        }
+
+                        // fprintf(logfile, "all_events[%d] = %d\n", j, all_events[j].state);
+
+                        // all_events[j] = current_event;
+                        
+                        // if(all_events[j].state == DONE){
+                        //     deregister_socket();
+                        // }
+                        // j = size_of_all_events;
+
                     }
-                }
+                    else {
+                        // fprintf(logfile, "all_events[%d] = %d\n", j, all_events[j].state);
 
-                switch(current_event.state) {
-                    case READ_REQUEST:
-                        read_request_state(current_event);
-                        break;
-                    case SEND_REQUEST:
-                        send_request_state(current_event);
-                        break;
-                    case READ_RESPONSE:
-                        read_response_state(current_event);
-                        break;
-                    case SEND_RESPONSE:
-                        send_response_state(current_event);
-                        break;                                                
-                    default : 
-                        fprintf(stderr, "Error: State of current event not valid ");
-                }
+                    }
 
+                    // if(all_events[j].state == DONE){
+                    //     deregister_socket();
+                    // }
+
+                }
+                fprintf(logfile, "\n\n");
 			}
 		}
 	}

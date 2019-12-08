@@ -25,7 +25,7 @@
 #define SEND_TO_CLIENT 4
 
 
-/* You won't lose style points for including this long line in your code */
+/* HTTP Request Helpers */
 static const char *user_agent_hdr = "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:10.0.3) Gecko/20120305 Firefox/10.0.3\r\n";
 static const char *connection_hdr = "Connection: close\r\n";
 static const char *proxy_connection_hdr = "Proxy-Connection: close\r\n";
@@ -36,16 +36,10 @@ static const char *default_port = "80";
 static const char *version_hdr = " HTTP/1.0";
 static const char *colon = ":";
 
-void print_to_log_file(char* url);
+/*---------------------- Structs and other global variables ------------------*/
 FILE *logfile;
 
-
-int parse_request(char* request, char* type, char* protocol, char* host, char* port, char* resource, char* version);
-void parse_host_and_port(char* request, char* host, char* port);
-void make_url(char* url, char* protocal, char* port, char* host, char* resource);
-int make_listening_socket(int port);
-void sigint_handler(int sig);
-
+//---------- Cache
 typedef struct cache_node{
     char* url;
     char* response;
@@ -62,13 +56,13 @@ typedef struct {
 
 cache_list head_cache;
 
-
+//------------- Sockets and File descriptors
 int efd;
 int listenfd;
 struct sockaddr_in ip4addr;
 struct epoll_event *events;
 
-
+//---------------- Events data structure
 struct event_list_node {
     int client_fd;
     int server_fd;
@@ -89,14 +83,24 @@ struct event_list_head {
 
 struct event_list_head* info_head;
 
+/*----------------------------- Functions -----------------------------*/
+void print_to_log_file(char* url);
 
+//---------- Helpter Functions
+int parse_request(char* request, char* type, char* protocol, char* host, char* port, char* resource, char* version);
+void parse_host_and_port(char* request, char* host, char* port);
+void make_url(char* url, char* protocal, char* port, char* host, char* resource);
+int make_listening_socket(int port);
+void sigint_handler(int sig);
 
+//----------- Epoll states
 void read_from_client(struct event_list_node* current);
 void send_to_server(struct event_list_node* current);
 void read_from_server(struct event_list_node* current);
 void send_to_client(struct event_list_node* current);
 void remove_from_list(struct event_list_node* current);
 
+//---------- Cache
 void free_cache(cache_list *cache);
 int get_data_from_cache(cache_list *cache, char* url, char* response);
 int cache_search(cache_list *cache, char* url);
@@ -104,12 +108,9 @@ void add_cache(cache_list *cache, char* url, char* content, int size);
 void cache_init(cache_list *cache);
 
 
-
-
 /* ------------------------------------- main() -------------------------------------------------*/
 int main(int argc, char *argv[])
 {
-    // printf("start program");
     int port;
     if (argc < 2){
 	    fprintf(stderr, "usage: %s <port>\n", argv[0]);
@@ -170,7 +171,6 @@ int main(int argc, char *argv[])
 			}
 
 			if (listenfd == events[i].data.fd) { 
-                fprintf(logfile, "Establishing new event\n");
 				clientlen = sizeof(struct sockaddr_storage); 
 
 				while ((connfd = accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen)) > 0) {
@@ -221,9 +221,7 @@ int main(int argc, char *argv[])
 				}
 			} 
             else { 
-                fprintf(logfile, "Event triggered on: %d\n", events[i].data.fd);
                 struct event_list_node* current = info_head->next;
-                fflush(logfile);
 
                 while(current){
                     if(events[i].data.fd == current->client_fd || events[i].data.fd == current->server_fd){
@@ -249,7 +247,6 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
-	free(events);
     return 0;
 }
 
@@ -298,7 +295,6 @@ void read_from_client(struct event_list_node* current)
         char new_request[MAXBUF] = {0};
 
         if(cache_search(&head_cache, url)){
-            fprintf(logfile, "Is in cache\n");
             current->read_from_server = get_data_from_cache(&head_cache, url, current->response);
             struct epoll_event new_event;
             new_event.events = EPOLLOUT | EPOLLET;
@@ -330,8 +326,6 @@ void read_from_client(struct event_list_node* current)
         strncat(new_request, end_line, BUFSIZ);
         
         current->read_from_client = strlen(new_request);
-        fprintf(logfile, "before we copy the new request over \n");
-        fflush(logfile);
         memcpy(current->request, new_request, current->read_from_client);
 
         struct addrinfo hints;
@@ -369,8 +363,6 @@ void read_from_client(struct event_list_node* current)
 		    exit(1);
 	    }
 
-        fprintf(logfile, "Created Socket, now adding to events\n");
-
         struct epoll_event new_event;
         new_event.events = EPOLLOUT | EPOLLET;
         new_event.data.fd = sfd;
@@ -387,8 +379,6 @@ void read_from_client(struct event_list_node* current)
         // simply close connection and move on
     }
 
-    fprintf(logfile, "Exiting read_client_request function\n");
-    fflush(logfile);
     return;
 }
 
@@ -449,12 +439,6 @@ void read_from_server(struct event_list_node* current)
             return;
         }
     }
-
-    // if (epoll_ctl(efd, EPOLL_CTL_DEL, current->server_fd, NULL) < 0) {
-    //     fprintf(stderr, "error deleting serverfd event\n");
-    //     exit(1);
-    // } 
-    // close(current->server_fd);
 
     struct epoll_event new_event;
     new_event.events = EPOLLOUT | EPOLLET;
@@ -648,7 +632,8 @@ void remove_from_list(struct event_list_node* node_to_remove)
 void sigint_handler(int sig)  
 {
     fprintf(logfile, "In sigint handler\n");
-    // free_cache(&head_cache);
+    free_cache(&head_cache);
+    free(info_head);
     fclose(logfile);
     free(events);
 
@@ -713,10 +698,7 @@ int cache_search(cache_list *cache, char* url)
     struct cache_node *current = cache->head;
     int result = 0;
 
-    fprintf(logfile, "*************** Searching for: %s\n", url);
-
     while(current){
-            fprintf(logfile, "**current: %s\n", current->url);
         if (!strcmp(current->url, url)) { 
             result = 1;
         }

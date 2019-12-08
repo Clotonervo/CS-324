@@ -185,12 +185,12 @@ int main(int argc, char *argv[])
                             send_to_server(current);
                         }
                         else if (current->state = READ_FROM_SERVER){
-
+                            read_from_server(current);
                         }
                         else if (current->state = SEND_TO_CLIENT){
-
-
+                            send_to_client(current);
                         }
+                        break;
                     }
                     else {
                         current = current->next;
@@ -313,7 +313,7 @@ void read_from_client(struct event_list_node* current)
         current->server_fd = sfd;
         current->state = SEND_TO_SERVER;
 
-        if (epoll_ctl(efd, EPOLL_CTL_ADD, connfd, &event) < 0) {
+        if (epoll_ctl(efd, EPOLL_CTL_ADD, current->server_fd, &new_event) < 0) {
             fprintf(stderr, "error adding event\n");
             exit(1);
         }        
@@ -351,16 +351,88 @@ void send_to_server(struct event_list_node* current)
     }
 
     struct epoll_event* new_event;
-    new_event;
+    new_event->event = EPOLLIN | EPOLLET;
+    new_event->data.fd = current->server_fd;
+    current->state = READ_FROM_SERVER;
+
+    if (epoll_ctl(efd, EPOLL_CTL_MOD, current->server_fd, &new_event) < 0) {
+        fprintf(stderr, "error changing event\n");
+        exit(1);
+    }   
 
     return;
 }
 
 
+/* ----------------------------------------------------------------------------------------------------------------------------------------*/
+/* ----------------------------------------------------- READ FROM SERVER -----------------------------------------------------------------*/
+/* ----------------------------------------------------------------------------------------------------------------------------------------*/
+void read_from_server(struct event_list_node* current)
+{
+    int nread = 0;
+    char* p = current->response;
+    while(1){
+        nread = recv(current->server_fd, (p + current->read_from_server), MAXBUF, 0);
+        if(nread > 0){
+            current->read_from_server += nread;
+        }
+        else if (nread == 0){
+            break;
+        }
+        else if (nread < 0){
+            return;
+        }
+    }
 
+    if (epoll_ctl(efd, EPOLL_CTL_DEL, current->server_fd, NULL) < 0) {
+        fprintf(stderr, "error deleting serverfd event\n");
+        exit(1);
+    } 
+    close(current->server_fd);
 
+    struct epoll_event* new_event;
+    new_event->event = EPOLLOUT | EPOLLET;
+    new_event->data.fd = current->client_fd;
+    current->state = SEND_TO_CLIENT;
 
+    if (epoll_ctl(efd, EPOLL_CTL_MOD, current->client_fd, &new_event) < 0) {
+        fprintf(stderr, "error changing event\n");
+        exit(1);
+    }  
 
+    return;
+}
+
+/* ----------------------------------------------------------------------------------------------------------------------------------------*/
+/* ----------------------------------------------------- READ FROM SERVER -----------------------------------------------------------------*/
+/* ----------------------------------------------------------------------------------------------------------------------------------------*/
+void send_to_client(struct event_list_node* current)
+{
+    int nread = 0;
+    char* p = current->response;
+    while(current->read_from_server > 0){
+        nread = send(current->client_fd, (p + current->written_to_client), current->read_from_server, 0);
+
+        if (nread > 0){
+            current->written_to_client += nread;
+            current->read_from_server -= nread;
+        }
+        else if (nread == 0){
+            break;
+        }
+        else if (nread < 0){
+            return;
+        }
+    }
+
+    if (epoll_ctl(efd, EPOLL_CTL_DEL, current->client_fd, NULL) < 0) {
+        fprintf(stderr, "error deleting serverfd event\n");
+        exit(1);
+    } 
+    close(current->client_fd);
+    //delete from list
+    return;
+}
 
 
 

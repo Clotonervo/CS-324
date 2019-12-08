@@ -40,10 +40,13 @@ static const char *colon = ":";
 void print_to_log_file(char* url);
 FILE *logfile;
 
-void read_from_client(struct event_list_node* current);
-void send_to_server(struct event_list_node* current);
-void read_from_server(struct event_list_node* current);
-void send_to_client(struct event_list_node* current);
+
+int parse_request(char* request, char* type, char* protocol, char* host, char* port, char* resource, char* version);
+void parse_host_and_port(char* request, char* host, char* port);
+void make_url(char* url, char* protocal, char* port, char* host, char* resource);
+
+int efd;
+
 
 struct event_list_node {
     int client_fd;
@@ -51,6 +54,7 @@ struct event_list_node {
     int read_from_client;
     int written_to_server;
     int read_from_server;
+    int written_to_client;
     int state;
     char* request;
     char* response;
@@ -59,11 +63,17 @@ struct event_list_node {
 };
 
 struct event_list_head {
-    struct event_list_node* next 
-}
+    struct event_list_node* next;
+};
 
 struct event_list_head* info_head;
 
+
+void read_from_client(struct event_list_node* current);
+void send_to_server(struct event_list_node* current);
+void read_from_server(struct event_list_node* current);
+void send_to_client(struct event_list_node* current);
+void remove_from_list(struct event_list_node* current);
 
 /* ------------------------------------- main() -------------------------------------------------*/
 int main(int argc, char *argv[])
@@ -81,7 +91,6 @@ int main(int argc, char *argv[])
     int listenfd, connfd;
 	socklen_t clientlen;
 	struct sockaddr_storage clientaddr;
-	int efd;
 	struct epoll_event event;
 	struct epoll_event *events;
 	int i;
@@ -89,6 +98,9 @@ int main(int argc, char *argv[])
 
 	size_t n; 
 	char buf[MAXLINE]; 
+
+    logfile = fopen("proxy_log.txt", "w");
+    fprintf(logfile, "<---------------------- LOG FILE OPEN ---------------------------->\n");
 
 	if (argc != 2) {
 		fprintf(stderr, "usage: %s <port>\n", argv[0]);
@@ -115,7 +127,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-    info_head = calloc(4, sizeof(event_list_head));
+    info_head = calloc(4, sizeof(struct event_list_head));
 	events = calloc(MAXEVENTS, sizeof(event));
 
 	while (1) {
@@ -129,6 +141,7 @@ int main(int argc, char *argv[])
 			}
 
 			if (listenfd == events[i].data.fd) { 
+                fprintf(logfile, "Establishing new event\n");
 				clientlen = sizeof(struct sockaddr_storage); 
 
 				while ((connfd = accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen)) > 0) {
@@ -144,24 +157,30 @@ int main(int argc, char *argv[])
 						exit(1);
 					}
 
-                    struct event_list_node current = info_head->next;
+                    struct event_list_node* current = info_head->next;
 
-                    while(current->next){
-                        current = current->next;
-                    }
                     struct event_list_node* new_node;
-                    new_node = calloc(2, sizeof(event_list_node))
+                    new_node = calloc(2, sizeof(struct event_list_node));
                     new_node->state = READ_FROM_CLIENT;
                     new_node->client_fd = connfd;
                     new_node->server_fd = -1;
                     new_node->read_from_client = 0;
                     new_node->read_from_server = 0;
                     new_node->written_to_server = 0;
+                    new_node->written_to_client = 0;
                     new_node->response = calloc(2, MAX_OBJECT_SIZE);
                     new_node->request = calloc(2, MAX_OBJECT_SIZE);
                     new_node->url = calloc(1, MAXBUF);
-                    current->next = new_node;
-
+                    
+                    if(info_head->next == NULL){
+                        info_head->next = new_node;
+                    }
+                    else {
+                        while(current->next){
+                            current = current->next;
+                        }
+                        current->next = new_node;
+                    }
 
 				}
 
@@ -173,21 +192,30 @@ int main(int argc, char *argv[])
 				}
 			} 
             else { 
-
-                struct event_list_node current = info_head.next;
+                fprintf(logfile, "Event triggered on: %d\n", events[i].data.fd);
+                struct event_list_node* current = info_head->next;
+                fflush(logfile);
 
                 while(current){
                     if(events[i].data.fd == current->client_fd || events[i].data.fd == current->server_fd){
-                        if(current->state = READ_FROM_CLIENT){
+                        if(current->state == READ_FROM_CLIENT){
+                            fprintf(logfile, "Going into read_from_client function\n");
+                            fflush(logfile);
                             read_from_client(current);
                         }
-                        else if (current->state = SEND_TO_SERVER){
+                        else if (current->state == SEND_TO_SERVER){
+                            fprintf(logfile, "Going into send_to_server function\n");
+                            fflush(logfile);
                             send_to_server(current);
                         }
-                        else if (current->state = READ_FROM_SERVER){
+                        else if (current->state == READ_FROM_SERVER){
+                            fprintf(logfile, "Going into read_from_server function\n");
+                            fflush(logfile);
                             read_from_server(current);
                         }
-                        else if (current->state = SEND_TO_CLIENT){
+                        else if (current->state == SEND_TO_CLIENT){
+                            fprintf(logfile, "Going into send_to_client function\n");
+                            fflush(logfile);
                             send_to_client(current);
                         }
                         break;
@@ -210,6 +238,7 @@ int main(int argc, char *argv[])
 void read_from_client(struct event_list_node* current)
 {
     char* p = current->request;
+    int nread = 0;
     while(1){
         nread = recv(current->client_fd, (p + current->read_from_client), MAXBUF, 0);
 
@@ -229,6 +258,10 @@ void read_from_client(struct event_list_node* current)
         }
     }
 
+    fprintf(logfile, "Read all request bytes from client!\n");
+    // fprintf(logfile, "request = %s \n", ->request);
+
+
     char request[MAXBUF] = {0};
     char type[BUFSIZ] = {0};
     char host[BUFSIZ];
@@ -240,12 +273,11 @@ void read_from_client(struct event_list_node* current)
     int sfd = 0;
     int req_val = 0;
 
-    read_bytes(connfd,request);
-
-    req_val = parse_request(request, type, protocal, host, port, resource, version);
+    req_val = parse_request(current->request, type, protocal, host, port, resource, version);
     make_url(url, protocal, port, host, resource);
     print_to_log_file(url);
     strcpy(current->url, url);
+    fprintf(logfile, "After url is copied over \n");
 
     if (req_val == 0){
         int response_length = 0;
@@ -270,7 +302,9 @@ void read_from_client(struct event_list_node* current)
         
         int request_length = 0;
         current->read_from_client = strlen(new_request);
-        memcpy(current->request, current->read_from_client);
+        fprintf(logfile, "before we copy the new request over \n");
+        fflush(logfile);
+        memcpy(current->request, new_request, current->read_from_client);
 
         struct addrinfo hints;
         struct addrinfo *result, *rp;
@@ -307,9 +341,11 @@ void read_from_client(struct event_list_node* current)
 		    exit(1);
 	    }
 
-        struct epoll_event* new_event;
-        new_event->event = EPOLLOUT | EPOLLET;
-        new_event->data.fd = sfd;
+        fprintf(logfile, "Created Socket, now adding to events\n");
+
+        struct epoll_event new_event;
+        new_event.events = EPOLLOUT | EPOLLET;
+        new_event.data.fd = sfd;
         current->server_fd = sfd;
         current->state = SEND_TO_SERVER;
 
@@ -323,6 +359,8 @@ void read_from_client(struct event_list_node* current)
         // simply close connection and move on
     }
 
+    fprintf(logfile, "Exiting read_client_request function\n");
+    fflush(logfile);
     return;
 }
 
@@ -332,7 +370,7 @@ void read_from_client(struct event_list_node* current)
 void send_to_server(struct event_list_node* current)
 {
     int nread = 0;
-    char* p = current->request
+    char* p = current->request;
 
     while(current->read_from_client > 0){
 
@@ -350,9 +388,9 @@ void send_to_server(struct event_list_node* current)
         }
     }
 
-    struct epoll_event* new_event;
-    new_event->event = EPOLLIN | EPOLLET;
-    new_event->data.fd = current->server_fd;
+    struct epoll_event new_event;
+    new_event.events = EPOLLIN | EPOLLET;
+    new_event.data.fd = current->server_fd;
     current->state = READ_FROM_SERVER;
 
     if (epoll_ctl(efd, EPOLL_CTL_MOD, current->server_fd, &new_event) < 0) {
@@ -390,9 +428,9 @@ void read_from_server(struct event_list_node* current)
     } 
     close(current->server_fd);
 
-    struct epoll_event* new_event;
-    new_event->event = EPOLLOUT | EPOLLET;
-    new_event->data.fd = current->client_fd;
+    struct epoll_event new_event;
+    new_event.events = EPOLLOUT | EPOLLET;
+    new_event.data.fd = current->client_fd;
     current->state = SEND_TO_CLIENT;
 
     if (epoll_ctl(efd, EPOLL_CTL_MOD, current->client_fd, &new_event) < 0) {
@@ -404,7 +442,7 @@ void read_from_server(struct event_list_node* current)
 }
 
 /* ----------------------------------------------------------------------------------------------------------------------------------------*/
-/* ----------------------------------------------------- READ FROM SERVER -----------------------------------------------------------------*/
+/* ----------------------------------------------------- SEND TO CLIENT -----------------------------------------------------------------*/
 /* ----------------------------------------------------------------------------------------------------------------------------------------*/
 void send_to_client(struct event_list_node* current)
 {
@@ -430,11 +468,95 @@ void send_to_client(struct event_list_node* current)
         exit(1);
     } 
     close(current->client_fd);
+    current->state = 0;
+    current->client_fd = -1;
+    current->server_fd = -1;
     //delete from list
     return;
 }
 
 
+int parse_request(char* request, char* type, char* protocol, char* host, char* port, char* resource, char* version){
+	char url[MAXBUF];
+	if(strlen(request) == 0) {
+        return -1;
+    }
+
+	if(!strstr(request, "/")){ 
+		return -1;
+    }
+
+    parse_host_and_port(request, host, port);
+	sscanf(request,"%s %s %s", type, url, version);
+
+    char* test = strstr(url, "://");
+	
+	if (test) {
+    	strcpy(resource, "/");
+		sscanf(url, "%[^:]://%*[^/]%s", protocol, resource);
+        if(!strcmp(resource, "/\0")){
+            resource = "/\0";
+        }
+
+    }
+	else {
+    	strcpy(resource, "/");
+		sscanf(url, "[^/]%s", resource);
+    }
+
+	return 0;
+}
+
+
+void make_url(char* url, char* protocal, char* port, char* host, char* resource)
+{
+    char final_url[MAXLINE] = {0};
+    char* p = final_url;
+
+    strcpy(final_url, protocal);
+    strcat(final_url, "://");
+    strcat(final_url, host);
+    if(strcmp(port, "80")){
+        strcat(final_url, colon);
+        strcat(final_url, port);
+    }
+    strcat(final_url, resource);
+    strcat(final_url, "\n\0");
+
+    strcpy(url, p);
+}
+
+void parse_host_and_port(char* request, char* host, char* port)
+{
+    char request_cpy[MAXBUF] = {0};
+    strcpy(request_cpy, request);
+
+    char *temp = strstr(request_cpy,"Host:");
+    if (temp){
+        temp = temp + 6;
+
+        char* p = strchr(temp,':');
+        char* n = strchr(temp, '\r');
+
+        if (p < n){
+            *p = '\0';
+            strcpy(host, temp);
+            char* temp_p = p + 1;
+            p = strchr(temp_p,'\r');
+            *p = '\0';
+            strcpy(port, temp_p);
+        }
+        else {
+            memcpy(port, default_port, strlen(default_port));
+            *n = '\0';
+            strcpy(host, temp);
+
+        }
+    }
+    else {
+        return;
+    }
+}
 
 void print_to_log_file(char* url)
 {

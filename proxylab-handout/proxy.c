@@ -12,7 +12,6 @@
 #include<fcntl.h>
 
 
-
 /* Recommended max cache and object sizes */
 #define MAX_CACHE_SIZE 1049000
 #define MAX_OBJECT_SIZE 102400
@@ -44,8 +43,30 @@ FILE *logfile;
 int parse_request(char* request, char* type, char* protocol, char* host, char* port, char* resource, char* version);
 void parse_host_and_port(char* request, char* host, char* port);
 void make_url(char* url, char* protocal, char* port, char* host, char* resource);
+int make_listening_socket(int port);
+void sigint_handler(int sig);
+
+typedef struct cache_node{
+    char* url;
+    char* response;
+    int size;
+    struct cache_node* next;
+    struct cache_node* previous;
+} cache_node;
+
+typedef struct {
+    int cache_size;
+    int number_of_objects;
+    struct cache_node* head;
+} cache_list;
+
+cache_list head_cache;
+
 
 int efd;
+int listenfd;
+struct sockaddr_in ip4addr;
+struct epoll_event *events;
 
 
 struct event_list_node {
@@ -69,11 +90,21 @@ struct event_list_head {
 struct event_list_head* info_head;
 
 
+
 void read_from_client(struct event_list_node* current);
 void send_to_server(struct event_list_node* current);
 void read_from_server(struct event_list_node* current);
 void send_to_client(struct event_list_node* current);
 void remove_from_list(struct event_list_node* current);
+
+void free_cache(cache_list *cache);
+int get_data_from_cache(cache_list *cache, char* url, char* response);
+int cache_search(cache_list *cache, char* url);
+void add_cache(cache_list *cache, char* url, char* content, int size);
+void cache_init(cache_list *cache);
+
+
+
 
 /* ------------------------------------- main() -------------------------------------------------*/
 int main(int argc, char *argv[])
@@ -86,28 +117,26 @@ int main(int argc, char *argv[])
     }
 
     port = atoi(argv[1]);
+    signal(SIGINT, sigint_handler);
 
 
-    int listenfd, connfd;
+    int connfd;
 	socklen_t clientlen;
 	struct sockaddr_storage clientaddr;
 	struct epoll_event event;
-	struct epoll_event *events;
 	int i;
-	int len;
-
 	size_t n; 
-	char buf[MAXLINE]; 
 
     logfile = fopen("proxy_log.txt", "w");
     fprintf(logfile, "<---------------------- LOG FILE OPEN ---------------------------->\n");
+    cache_init(&head_cache);
 
 	if (argc != 2) {
 		fprintf(stderr, "usage: %s <port>\n", argv[0]);
 		exit(0);
 	}
 
-	listenfd = Open_listenfd(argv[1]);
+	listenfd = make_listening_socket(port);
 
 	// set fd to non-blocking (set flags while keeping existing flags)
 	if (fcntl(listenfd, F_SETFL, fcntl(listenfd, F_GETFL, 0) | O_NONBLOCK) < 0) {
@@ -199,23 +228,15 @@ int main(int argc, char *argv[])
                 while(current){
                     if(events[i].data.fd == current->client_fd || events[i].data.fd == current->server_fd){
                         if(current->state == READ_FROM_CLIENT){
-                            fprintf(logfile, "Going into read_from_client function\n");
-                            fflush(logfile);
                             read_from_client(current);
                         }
                         else if (current->state == SEND_TO_SERVER){
-                            fprintf(logfile, "Going into send_to_server function\n");
-                            fflush(logfile);
                             send_to_server(current);
                         }
                         else if (current->state == READ_FROM_SERVER){
-                            fprintf(logfile, "Going into read_from_server function\n");
-                            fflush(logfile);
                             read_from_server(current);
                         }
                         else if (current->state == SEND_TO_CLIENT){
-                            fprintf(logfile, "Going into send_to_client function\n");
-                            fflush(logfile);
                             send_to_client(current);
                         }
                         break;
@@ -258,11 +279,6 @@ void read_from_client(struct event_list_node* current)
         }
     }
 
-    fprintf(logfile, "Read all request bytes from client!\n");
-    // fprintf(logfile, "request = %s \n", ->request);
-
-
-    char request[MAXBUF] = {0};
     char type[BUFSIZ] = {0};
     char host[BUFSIZ];
     char port[BUFSIZ];
@@ -277,12 +293,25 @@ void read_from_client(struct event_list_node* current)
     make_url(url, protocal, port, host, resource);
     print_to_log_file(url);
     strcpy(current->url, url);
-    fprintf(logfile, "After url is copied over \n");
 
     if (req_val == 0){
-        int response_length = 0;
-        char request_to_forward[MAX_OBJECT_SIZE];        
         char new_request[MAXBUF] = {0};
+
+        if(cache_search(&head_cache, url)){
+            fprintf(logfile, "Is in cache\n");
+            current->read_from_server = get_data_from_cache(&head_cache, url, current->response);
+            struct epoll_event new_event;
+            new_event.events = EPOLLOUT | EPOLLET;
+            new_event.data.fd = current->client_fd;
+            current->state = SEND_TO_CLIENT;
+
+            if (epoll_ctl(efd, EPOLL_CTL_MOD, current->client_fd, &new_event) < 0) {
+                fprintf(stderr, "error changing event\n");
+                exit(1);
+            }  
+
+            return;
+        }
 
         strncat(new_request, type, BUFSIZ);
         strncat(new_request, " ", 2);
@@ -300,7 +329,6 @@ void read_from_client(struct event_list_node* current)
         strncat(new_request, proxy_connection_hdr, BUFSIZ);
         strncat(new_request, end_line, BUFSIZ);
         
-        int request_length = 0;
         current->read_from_client = strlen(new_request);
         fprintf(logfile, "before we copy the new request over \n");
         fflush(logfile);
@@ -422,11 +450,11 @@ void read_from_server(struct event_list_node* current)
         }
     }
 
-    if (epoll_ctl(efd, EPOLL_CTL_DEL, current->server_fd, NULL) < 0) {
-        fprintf(stderr, "error deleting serverfd event\n");
-        exit(1);
-    } 
-    close(current->server_fd);
+    // if (epoll_ctl(efd, EPOLL_CTL_DEL, current->server_fd, NULL) < 0) {
+    //     fprintf(stderr, "error deleting serverfd event\n");
+    //     exit(1);
+    // } 
+    // close(current->server_fd);
 
     struct epoll_event new_event;
     new_event.events = EPOLLOUT | EPOLLET;
@@ -463,15 +491,24 @@ void send_to_client(struct event_list_node* current)
         }
     }
 
+    if(!cache_search(&head_cache, current->url)){
+        add_cache(&head_cache, current->url, current->response, current->written_to_server);
+    }
+
+    if (epoll_ctl(efd, EPOLL_CTL_DEL, current->server_fd, NULL) < 0) {
+        fprintf(stderr, "error deleting serverfd event\n");
+        exit(1);
+    } 
+    close(current->server_fd);
+
     if (epoll_ctl(efd, EPOLL_CTL_DEL, current->client_fd, NULL) < 0) {
         fprintf(stderr, "error deleting serverfd event\n");
         exit(1);
     } 
     close(current->client_fd);
-    current->state = 0;
-    current->client_fd = -1;
-    current->server_fd = -1;
-    //delete from list
+
+    remove_from_list(current);
+
     return;
 }
 
@@ -558,6 +595,67 @@ void parse_host_and_port(char* request, char* host, char* port)
     }
 }
 
+int make_listening_socket(int port)
+{
+    memset(&ip4addr, 0, sizeof(struct sockaddr_in));
+    ip4addr.sin_family = AF_INET;
+    ip4addr.sin_port = htons(port);
+    ip4addr.sin_addr.s_addr = INADDR_ANY;
+
+    if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        perror("socket error");
+        exit(EXIT_FAILURE);
+    }
+    if (bind(listenfd, (struct sockaddr *)&ip4addr, sizeof(struct sockaddr_in)) < 0) {
+        close(listenfd);
+        perror("bind error");
+        exit(EXIT_FAILURE);
+    }
+    if (listen(listenfd, 100) < 0) {
+        close(listenfd);
+        perror("listen error");
+        exit(EXIT_FAILURE);
+    }
+    return listenfd;
+}
+
+/* ------------------------------------- Deregistering sockets/removing from data structure -------------------------------------------------*/
+void remove_from_list(struct event_list_node* node_to_remove)
+{
+    if(info_head->next == node_to_remove){
+        free(node_to_remove->url);
+        free(node_to_remove->response);
+        free(node_to_remove->request);
+        info_head->next = node_to_remove->next;
+        free(node_to_remove);
+    }
+    else{
+        struct event_list_node* parent = info_head->next;
+        while(parent->next != node_to_remove){
+            parent = parent->next;
+        }
+        free(node_to_remove->url);
+        free(node_to_remove->response);
+        free(node_to_remove->request);
+        parent->next = node_to_remove->next;
+        free(node_to_remove);
+    }
+    return;
+}
+
+/* ------------------------------------- SIGINT handler -------------------------------------------------*/
+
+void sigint_handler(int sig)  
+{
+    fprintf(logfile, "In sigint handler\n");
+    // free_cache(&head_cache);
+    fclose(logfile);
+    free(events);
+
+    exit(0);
+}
+
+/* ------------------------------------- Logger -------------------------------------------------*/
 void print_to_log_file(char* url)
 {
     char message[MAXBUF] = {0};
@@ -573,5 +671,90 @@ void print_to_log_file(char* url)
 
     fprintf(logfile, "%s", p);
     fflush(logfile);
+
+    return;
 }
+
+/* ------------------------------------------- Cache ---------------------------------------*/
+void cache_init(cache_list *cache) 
+{
+    cache->cache_size = 0;
+    cache->number_of_objects = 0;
+    cache->head = NULL;
+}
+
+void add_cache(cache_list *cache, char* url, char* content, int size)
+{
+    if (size > MAX_OBJECT_SIZE){
+        return;
+    }
+    
+    if (cache->cache_size + size > MAX_CACHE_SIZE){
+        return;
+    }
+
+    cache->cache_size += size;
+    cache->number_of_objects += 1;
+
+    cache_node* new_node = malloc(sizeof(cache_node));
+    new_node->next = cache->head;
+    new_node->url = malloc(strlen(url) * sizeof(char));
+    new_node->response = malloc(size);
+    new_node->size = size;
+    strcpy(new_node->url, url);
+    memcpy(new_node->response, content, size);
+
+    cache->head = new_node;
+
+}
+
+int cache_search(cache_list *cache, char* url)
+{       
+    struct cache_node *current = cache->head;
+    int result = 0;
+
+    fprintf(logfile, "*************** Searching for: %s\n", url);
+
+    while(current){
+            fprintf(logfile, "**current: %s\n", current->url);
+        if (!strcmp(current->url, url)) { 
+            result = 1;
+        }
+        current = current->next;
+    }
+    return result;
+}
+
+int get_data_from_cache(cache_list *cache, char* url, char* response)
+{
+    // printf("Getting data from cache\n");
+    struct cache_node *current = cache->head;
+    int result = 0;
+
+    while(current){
+
+        if (!strcmp(current->url, url)) { 
+            memcpy(response, current->response, current->size);
+            result = current->size;
+            break;
+        }
+        current = current->next;
+    }
+
+    return result;
+}
+
+void free_cache(cache_list *cache)
+{
+    struct cache_node *current = cache->head;
+    while(current){
+        free(current->url);
+        free(current->response);
+        struct cache_node *temp = current->next;
+        free(current);
+        current = temp;
+    }
+}
+
+
 

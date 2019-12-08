@@ -1,0 +1,5 @@
+<---------------------- LOG FILE OPEN ---------------------------->
+08 Dec 12:01:42 >|  http://localhost:3229/tiny.c
+08 Dec 12:01:42 >|  http://localhost:3229/home.html
+08 Dec 12:01:42 >|  http://localhost:3229/csapp.c
+08 Dec 12:01:42 >|  http://localhost:3229/home.html

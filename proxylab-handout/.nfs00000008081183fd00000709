@@ -1,0 +1,418 @@
+<-------------------------LOG OPEN-------------------------------->
+---- There is a new listening fd
+
+
+---- Something is happening to an existing event: 7
+url = 
+state = 1
+clientfd = 7
+serverfd = -1
+read_request_state() function called!
+nread=140
+buf=GET http://localhost:23988/home.html HTTP/1.1
+Host: localhost:23988
+User-Agent: curl/7.58.0
+Accept: */*
+Proxy-Connection: Keep-Alive
+
+
+07 Dec 20:12:40 >|  http://localhost:23988/home.html
+Finished with read_request state!
+now state is = 2
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/home.html
+
+state = 2
+clientfd = 7
+serverfd = 8
+send_request_state() function called!
+buffer = GET /home.html HTTP/1.0
+Host: localhost:23988
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:10.0.3) Gecko/20120305 Firefox/10.0.3
+Accept */* 
+Connection: close
+Proxy-Connection: close
+
+Finished with send_request state!
+now state is = 3
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/home.html
+
+state = 3
+clientfd = 7
+serverfd = 8
+read_response_state() function called!
+Finished with read_response state!
+now state is = 4
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/home.html
+
+state = 4
+clientfd = 7
+serverfd = 8
+send_response_state() function called!
+nread = 229
+Finished with send_response state!
+now state is = 5
+Deregistering a socket!
+
+
+---- There is a new listening fd
+
+
+---- Something is happening to an existing event: 7
+url = 
+state = 1
+clientfd = 7
+serverfd = -1
+read_request_state() function called!
+nread=138
+buf=GET http://localhost:23988/csapp.c HTTP/1.1
+Host: localhost:23988
+User-Agent: curl/7.58.0
+Accept: */*
+Proxy-Connection: Keep-Alive
+
+
+07 Dec 20:12:41 >|  http://localhost:23988/csapp.c
+Finished with read_request state!
+now state is = 2
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/csapp.c
+
+state = 2
+clientfd = 7
+serverfd = 8
+send_request_state() function called!
+buffer = GET /csapp.c HTTP/1.0
+Host: localhost:23988
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:10.0.3) Gecko/20120305 Firefox/10.0.3
+Accept */* 
+Connection: close
+Proxy-Connection: close
+
+Finished with send_request state!
+now state is = 3
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/csapp.c
+
+state = 3
+clientfd = 7
+serverfd = 8
+read_response_state() function called!
+Finished with read_response state!
+now state is = 4
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/csapp.c
+
+state = 4
+clientfd = 7
+serverfd = 8
+send_response_state() function called!
+nread = 23986
+Finished with send_response state!
+now state is = 5
+Deregistering a socket!
+
+
+---- There is a new listening fd
+
+
+---- Something is happening to an existing event: 7
+url = 
+state = 1
+clientfd = 7
+serverfd = -1
+read_request_state() function called!
+nread=137
+buf=GET http://localhost:23988/tiny.c HTTP/1.1
+Host: localhost:23988
+User-Agent: curl/7.58.0
+Accept: */*
+Proxy-Connection: Keep-Alive
+
+
+07 Dec 20:12:42 >|  http://localhost:23988/tiny.c
+Finished with read_request state!
+now state is = 2
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/tiny.c
+
+state = 2
+clientfd = 7
+serverfd = 8
+send_request_state() function called!
+buffer = GET /tiny.c HTTP/1.0
+Host: localhost:23988
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:10.0.3) Gecko/20120305 Firefox/10.0.3
+Accept */* 
+Connection: close
+Proxy-Connection: close
+
+Finished with send_request state!
+now state is = 3
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/tiny.c
+
+state = 3
+clientfd = 7
+serverfd = 8
+read_response_state() function called!
+Finished with read_response state!
+now state is = 4
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/tiny.c
+
+state = 4
+clientfd = 7
+serverfd = 8
+send_response_state() function called!
+nread = 8708
+Finished with send_response state!
+now state is = 5
+Deregistering a socket!
+
+
+---- There is a new listening fd
+
+
+---- Something is happening to an existing event: 7
+url = 
+state = 1
+clientfd = 7
+serverfd = -1
+read_request_state() function called!
+nread=143
+buf=GET http://localhost:23988/godzilla.jpg HTTP/1.1
+Host: localhost:23988
+User-Agent: curl/7.58.0
+Accept: */*
+Proxy-Connection: Keep-Alive
+
+
+07 Dec 20:12:44 >|  http://localhost:23988/godzilla.jpg
+Finished with read_request state!
+now state is = 2
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/godzilla.jpg
+
+state = 2
+clientfd = 7
+serverfd = 8
+send_request_state() function called!
+buffer = GET /godzilla.jpg HTTP/1.0
+Host: localhost:23988
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:10.0.3) Gecko/20120305 Firefox/10.0.3
+Accept */* 
+Connection: close
+Proxy-Connection: close
+
+Finished with send_request state!
+now state is = 3
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/godzilla.jpg
+
+state = 3
+clientfd = 7
+serverfd = 8
+read_response_state() function called!
+Finished with read_response state!
+now state is = 4
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/godzilla.jpg
+
+state = 4
+clientfd = 7
+serverfd = 8
+send_response_state() function called!
+nread = 10970
+Finished with send_response state!
+now state is = 5
+Deregistering a socket!
+
+
+---- There is a new listening fd
+
+
+---- Something is happening to an existing event: 7
+url = 
+state = 1
+clientfd = 7
+serverfd = -1
+read_request_state() function called!
+nread=150
+buf=GET http://localhost:23988/cgi-bin/slow?1&4096 HTTP/1.1
+Host: localhost:23988
+User-Agent: curl/7.58.0
+Accept: */*
+Proxy-Connection: Keep-Alive
+
+
+07 Dec 20:12:45 >|  http://localhost:23988/cgi-bin/slow?1&4096
+Finished with read_request state!
+now state is = 2
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/cgi-bin/slow?1&4096
+
+state = 2
+clientfd = 7
+serverfd = 8
+send_request_state() function called!
+buffer = GET /cgi-bin/slow?1&4096 HTTP/1.0
+Host: localhost:23988
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:10.0.3) Gecko/20120305 Firefox/10.0.3
+Accept */* 
+Connection: close
+Proxy-Connection: close
+
+Finished with send_request state!
+now state is = 3
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/cgi-bin/slow?1&4096
+
+state = 3
+clientfd = 7
+serverfd = 8
+read_response_state() function called!
+EWOULDBLOCK OR EAGAIN
+now state is = 3
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/cgi-bin/slow?1&4096
+
+state = 3
+clientfd = 7
+serverfd = 8
+read_response_state() function called!
+EWOULDBLOCK OR EAGAIN
+now state is = 3
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/cgi-bin/slow?1&4096
+
+state = 3
+clientfd = 7
+serverfd = 8
+read_response_state() function called!
+Finished with read_response state!
+now state is = 4
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/cgi-bin/slow?1&4096
+
+state = 4
+clientfd = 7
+serverfd = 8
+send_response_state() function called!
+nread = 4206
+Finished with send_response state!
+now state is = 5
+Deregistering a socket!
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/cgi-bin/slow?1&4096
+
+state = 5
+clientfd = 7
+serverfd = 8
+now state is = 5
+Deregistering a socket!
+
+
+---- There is a new listening fd
+
+
+---- Something is happening to an existing event: 7
+url = 
+state = 1
+clientfd = 7
+serverfd = -1
+read_request_state() function called!
+nread=135
+buf=GET http://localhost:23988/tiny HTTP/1.1
+Host: localhost:23988
+User-Agent: curl/7.58.0
+Accept: */*
+Proxy-Connection: Keep-Alive
+
+
+07 Dec 20:12:49 >|  http://localhost:23988/tiny
+Finished with read_request state!
+now state is = 2
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/tiny
+
+state = 2
+clientfd = 7
+serverfd = 8
+send_request_state() function called!
+buffer = GET /tiny HTTP/1.0
+Host: localhost:23988
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:10.0.3) Gecko/20120305 Firefox/10.0.3
+Accept */* 
+Connection: close
+Proxy-Connection: close
+
+Finished with send_request state!
+now state is = 3
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/tiny
+
+state = 3
+clientfd = 7
+serverfd = 8
+read_response_state() function called!
+Finished with read_response state!
+now state is = 4
+
+
+---- Something is happening to an existing event: 7
+url = http://localhost:23988/tiny
+
+state = 4
+clientfd = 7
+serverfd = 8
+send_response_state() function called!
+nread = 36072
+Finished with send_response state!
+now state is = 5
+Deregistering a socket!
+
+
+In sigint handler

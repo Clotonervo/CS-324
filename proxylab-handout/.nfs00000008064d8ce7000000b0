@@ -1,0 +1,99 @@
+<---------------------- LOG FILE OPEN ---------------------------->
+Establishing new event
+Event triggered on: 7
+Going into read_from_client function
+Read all request bytes from client!
+08 Dec 11:12:05 >|  http://localhost:28239/home.html
+After url is copied over 
+before we copy the new request over 
+Created Socket, now adding to events
+Exiting read_client_request function
+Event triggered on: 8
+Going into send_to_server function
+Event triggered on: 8
+Going into read_from_server function
+Event triggered on: 7
+Going into send_to_client function
+Establishing new event
+Event triggered on: 7
+Going into read_from_client function
+Read all request bytes from client!
+08 Dec 11:12:06 >|  http://localhost:28239/csapp.c
+After url is copied over 
+before we copy the new request over 
+Created Socket, now adding to events
+Exiting read_client_request function
+Event triggered on: 8
+Going into send_to_server function
+Event triggered on: 8
+Going into read_from_server function
+Event triggered on: 7
+Going into send_to_client function
+Establishing new event
+Event triggered on: 7
+Going into read_from_client function
+Read all request bytes from client!
+08 Dec 11:12:06 >|  http://localhost:28239/tiny.c
+After url is copied over 
+before we copy the new request over 
+Created Socket, now adding to events
+Exiting read_client_request function
+Event triggered on: 8
+Going into send_to_server function
+Event triggered on: 8
+Going into read_from_server function
+Event triggered on: 8
+Going into read_from_server function
+Event triggered on: 7
+Going into send_to_client function
+Establishing new event
+Event triggered on: 7
+Going into read_from_client function
+Read all request bytes from client!
+08 Dec 11:12:06 >|  http://localhost:28239/godzilla.jpg
+After url is copied over 
+before we copy the new request over 
+Created Socket, now adding to events
+Exiting read_client_request function
+Event triggered on: 8
+Going into send_to_server function
+Event triggered on: 8
+Going into read_from_server function
+Event triggered on: 8
+Going into read_from_server function
+Event triggered on: 7
+Going into send_to_client function
+Establishing new event
+Event triggered on: 7
+Going into read_from_client function
+Read all request bytes from client!
+08 Dec 11:12:06 >|  http://localhost:28239/cgi-bin/slow?1&4096
+After url is copied over 
+before we copy the new request over 
+Created Socket, now adding to events
+Exiting read_client_request function
+Event triggered on: 8
+Going into send_to_server function
+Event triggered on: 8
+Going into read_from_server function
+Event triggered on: 8
+Going into read_from_server function
+Event triggered on: 8
+Going into read_from_server function
+Event triggered on: 7
+Going into send_to_client function
+Establishing new event
+Event triggered on: 7
+Going into read_from_client function
+Read all request bytes from client!
+08 Dec 11:12:10 >|  http://localhost:28239/tiny
+After url is copied over 
+before we copy the new request over 
+Created Socket, now adding to events
+Exiting read_client_request function
+Event triggered on: 8
+Going into send_to_server function
+Event triggered on: 8
+Going into read_from_server function
+Event triggered on: 7
+Going into send_to_client function

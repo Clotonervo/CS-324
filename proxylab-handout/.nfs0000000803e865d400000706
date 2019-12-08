@@ -1,0 +1,12 @@
+==4746== Memcheck, a memory error detector
+==4746== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==4746== Using Valgrind-3.13.0 and LibVEX; rerun with -h for copyright info
+==4746== Command: ./proxy 29323
+==4746== Parent PID: 4677
+==4746== 
+==4746== Syscall param epoll_ctl(event) points to uninitialised byte(s)
+==4746==    at 0x517D24A: epoll_ctl (syscall-template.S:78)
+==4746==    by 0x10C0EF: main (proxy.c:724)
+==4746==  Address 0x1fff00034c is on thread 1's stack
+==4746==  in frame #1, created by main (proxy.c:690)
+==4746== 

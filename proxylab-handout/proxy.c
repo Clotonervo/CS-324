@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
     port = atoi(argv[1]);
 
 
-int listenfd, connfd;
+    int listenfd, connfd;
 	socklen_t clientlen;
 	struct sockaddr_storage clientaddr;
 	int efd;
@@ -182,7 +182,7 @@ int listenfd, connfd;
                             read_from_client(current);
                         }
                         else if (current->state = SEND_TO_SERVER){
-
+                            send_to_server(current);
                         }
                         else if (current->state = READ_FROM_SERVER){
 
@@ -244,7 +244,8 @@ void read_from_client(struct event_list_node* current)
 
     req_val = parse_request(request, type, protocal, host, port, resource, version);
     make_url(url, protocal, port, host, resource);
-    log_insert(&log_buf, url);
+    print_to_log_file(url);
+    strcpy(current->url, url);
 
     if (req_val == 0){
         int response_length = 0;
@@ -325,6 +326,35 @@ void read_from_client(struct event_list_node* current)
     return;
 }
 
+/* ----------------------------------------------------------------------------------------------------------------------------------------*/
+/* ----------------------------------------------------- SEND TO SERVER -----------------------------------------------------------------*/
+/* ----------------------------------------------------------------------------------------------------------------------------------------*/
+void send_to_server(struct event_list_node* current)
+{
+    int nread = 0;
+    char* p = current->request
+
+    while(current->read_from_client > 0){
+
+        nread = send(current->server_fd, (p + current->written_to_server), MAXBUF, 0);
+
+        if (nread > 0){
+            current->written_to_server += nread;
+            current->read_from_client -= nread;
+        }
+        else if (nread == 0){
+            break;
+        }
+        else if (nread < 0){
+            return;
+        }
+    }
+
+    struct epoll_event* new_event;
+    new_event;
+
+    return;
+}
 
 
 
